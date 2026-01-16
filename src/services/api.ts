@@ -1,6 +1,52 @@
 import { AzureOpenAI } from 'openai';
 import type { CausalNode, Proposal, ExistingNodeProposal, ProposalConfig } from '../types';
 
+// Token usage tracking
+export interface TokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+
+// Global token accumulator
+let sessionTokenUsage: TokenUsage = {
+  promptTokens: 0,
+  completionTokens: 0,
+  totalTokens: 0
+};
+
+// Callbacks for token updates
+type TokenUpdateCallback = (usage: TokenUsage) => void;
+const tokenUpdateCallbacks: TokenUpdateCallback[] = [];
+
+export function subscribeToTokenUpdates(callback: TokenUpdateCallback): () => void {
+  tokenUpdateCallbacks.push(callback);
+  // Return unsubscribe function
+  return () => {
+    const index = tokenUpdateCallbacks.indexOf(callback);
+    if (index > -1) {
+      tokenUpdateCallbacks.splice(index, 1);
+    }
+  };
+}
+
+export function getSessionTokenUsage(): TokenUsage {
+  return { ...sessionTokenUsage };
+}
+
+export function resetSessionTokenUsage(): void {
+  sessionTokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+  tokenUpdateCallbacks.forEach(cb => cb(sessionTokenUsage));
+}
+
+function addTokenUsage(usage: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | undefined): void {
+  if (!usage) return;
+  sessionTokenUsage.promptTokens += usage.prompt_tokens || 0;
+  sessionTokenUsage.completionTokens += usage.completion_tokens || 0;
+  sessionTokenUsage.totalTokens += usage.total_tokens || 0;
+  tokenUpdateCallbacks.forEach(cb => cb({ ...sessionTokenUsage }));
+}
+
 // Azure OpenAI configuration
 const endpoint = import.meta.env.VITE_AZURE_OPENAI_ENDPOINT;
 const apiKey = import.meta.env.VITE_AZURE_OPENAI_API_KEY;
@@ -156,6 +202,9 @@ async function generateProposalWithVariation(
     temperature: 0.7
   });
 
+  // Track token usage
+  addTokenUsage(response.usage);
+
   // Extract text content from the response
   const content = response.choices[0]?.message?.content;
   if (!content) {
@@ -227,13 +276,15 @@ function validateCriticResponse(parsed: unknown): parsed is {
 
 /**
  * Critic agent that assesses proposal likelihood
+ * Supports both upstream (cause) and downstream (effect) directions
  */
 export async function assessProposal(
   experimentalContext: string,
   selectedNode: CausalNode,
   proposal: Proposal,
   allNodes: CausalNode[],
-  allEdges: { source: string; target: string }[]
+  allEdges: { source: string; target: string }[],
+  direction: 'upstream' | 'downstream' = 'upstream'
 ): Promise<{ likelihood: 'high' | 'medium' | 'low'; reason: string }> {
   if (!endpoint || !apiKey) {
     throw new Error('Azure OpenAI not configured');
@@ -246,6 +297,23 @@ export async function assessProposal(
     const targetNode = allNodes.find(n => n.id === e.target);
     return `- ${sourceNode?.displayName || e.source} → ${targetNode?.displayName || e.target}`;
   }).join('\n');
+
+  // Build direction-specific prompt sections
+  const isUpstream = direction === 'upstream';
+  const proposalType = isUpstream ? 'upstream cause' : 'downstream effect';
+  const relationshipDesc = isUpstream
+    ? `${proposal.displayName} → ${selectedNode.displayName} (proposed cause → target)`
+    : `${selectedNode.displayName} → ${proposal.displayName} (target → proposed effect)`;
+
+  const evaluationCriteria = isUpstream
+    ? `- Is there a known mechanism by which ${proposal.displayName} could cause changes in ${selectedNode.displayName}?
+- Is this causal relationship well-established, speculative, or unlikely?
+- Does it conflict with or duplicate existing relationships in the graph?
+- Could this be a confound rather than a true cause?`
+    : `- Is there a known mechanism by which ${selectedNode.displayName} could cause changes in ${proposal.displayName}?
+- Is this causal effect well-established, speculative, or unlikely?
+- Does it conflict with or duplicate existing relationships in the graph?
+- Is this a direct effect or would it require intermediate variables?`;
 
   const prompt = `You are a scientific critic evaluating proposed causal relationships.
 
@@ -265,14 +333,12 @@ PROPOSED ADDITION:
 Target variable: ${selectedNode.displayName}
 Description: ${selectedNode.description}
 
-Proposed new upstream cause: ${proposal.displayName}
+Proposed new ${proposalType}: ${proposal.displayName}
+Proposed relationship: ${relationshipDesc}
 Rationale given: ${proposal.rationale}
 
 Evaluate the scientific plausibility of adding this causal relationship. Consider:
-- Is there a known mechanism linking these variables?
-- Is this relationship well-established, speculative, or unlikely?
-- Does it conflict with or duplicate existing relationships in the graph?
-- Could this be a confound rather than a true cause?
+${evaluationCriteria}
 
 Respond ONLY with valid JSON:
 {
@@ -298,6 +364,9 @@ Use "high" for well-established relationships, "medium" for plausible but uncert
     temperature: 0.3  // Lower temperature for more consistent assessments
   });
 
+  // Track token usage
+  addTokenUsage(response.usage);
+
   const content = response.choices[0]?.message?.content;
   if (!content) {
     return { likelihood: 'medium', reason: 'Could not assess' };
@@ -320,6 +389,93 @@ Use "high" for well-established relationships, "medium" for plausible but uncert
   }
 
   return { likelihood: 'medium', reason: 'Could not assess' };
+}
+
+/**
+ * Consolidate duplicate/similar proposals into unique ones
+ */
+async function consolidateProposals(
+  experimentalContext: string,
+  proposals: Proposal[]
+): Promise<Proposal[]> {
+  if (proposals.length < 2) return proposals;
+
+  if (!endpoint || !apiKey) return proposals;
+
+  const proposalList = proposals.map((p, i) =>
+    `${i}: "${p.displayName}" - ${p.rationale.slice(0, 100)}`
+  ).join('\n');
+
+  const prompt = `Review these proposed causal variables for duplicates or very similar concepts that should be merged.
+
+CONTEXT: ${experimentalContext.slice(0, 200)}
+
+PROPOSALS:
+${proposalList}
+
+Identify any proposals that represent the same or nearly identical concepts.
+Group by index numbers.
+
+Respond with JSON only:
+{
+  "mergeGroups": [[0, 3], [1, 4]],
+  "reasoning": "brief explanation"
+}
+
+If no duplicates, return: {"mergeGroups": [], "reasoning": "All unique"}`;
+
+  try {
+    const response = await client.chat.completions.create({
+      model: deploymentName,
+      messages: [
+        { role: 'system', content: 'Identify conceptually duplicate proposals. Be conservative - only merge true duplicates. JSON only.' },
+        { role: 'user', content: prompt }
+      ],
+      max_tokens: 512,
+      temperature: 0.2
+    });
+
+    addTokenUsage(response.usage);
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) return proposals;
+
+    let cleaned = content.trim();
+    if (cleaned.startsWith('```json')) cleaned = cleaned.slice(7);
+    else if (cleaned.startsWith('```')) cleaned = cleaned.slice(3);
+    if (cleaned.endsWith('```')) cleaned = cleaned.slice(0, -3);
+    cleaned = cleaned.trim();
+
+    const parsed = JSON.parse(cleaned);
+    if (!parsed.mergeGroups || !Array.isArray(parsed.mergeGroups) || parsed.mergeGroups.length === 0) {
+      return proposals;
+    }
+
+    // Build set of indices to skip (merged into another)
+    const mergedIndices = new Set<number>();
+    const result: Proposal[] = [];
+
+    for (const group of parsed.mergeGroups) {
+      if (!Array.isArray(group) || group.length < 2) continue;
+
+      // Keep the first one (usually highest quality), mark others as merged
+      const keepIndex = group[0];
+      for (let i = 1; i < group.length; i++) {
+        mergedIndices.add(group[i]);
+      }
+    }
+
+    // Add non-merged proposals
+    for (let i = 0; i < proposals.length; i++) {
+      if (!mergedIndices.has(i)) {
+        result.push(proposals[i]);
+      }
+    }
+
+    return result;
+  } catch {
+    return proposals;
+  }
 }
 
 // Second round variations - focused on orthogonalization
@@ -454,6 +610,9 @@ async function generateDownstreamProposalWithVariation(
     temperature: 0.7
   });
 
+  // Track token usage
+  addTokenUsage(response.usage);
+
   const content = response.choices[0]?.message?.content;
   if (!content) {
     throw new Error('No content in API response');
@@ -513,89 +672,53 @@ function validateExistingNodeResponse(parsed: unknown): parsed is {
 }
 
 /**
- * Evaluate existing nodes as potential causes/effects
+ * Evaluate a batch of existing nodes as potential causes/effects
  */
-export async function evaluateExistingNodes(
+async function evaluateNodesBatch(
   experimentalContext: string,
   selectedNode: CausalNode,
-  candidateNodes: CausalNode[],
-  direction: 'upstream' | 'downstream',
-  allNodes: CausalNode[],
-  allEdges: { source: string; target: string }[]
+  candidateBatch: CausalNode[],
+  direction: 'upstream' | 'downstream'
 ): Promise<ExistingNodeProposal[]> {
-  if (!endpoint || !apiKey) {
-    throw new Error('Azure OpenAI not configured');
-  }
-
-  if (candidateNodes.length === 0) {
-    return [];
-  }
-
-  // Build graph description
-  const nodeList = allNodes.map(n => `- ${n.displayName}: ${n.description}`).join('\n');
-  const edgeList = allEdges.map(e => {
-    const sourceNode = allNodes.find(n => n.id === e.source);
-    const targetNode = allNodes.find(n => n.id === e.target);
-    return `- ${sourceNode?.displayName || e.source} → ${targetNode?.displayName || e.target}`;
-  }).join('\n');
-
-  const candidateList = candidateNodes.map(n => `- ${n.id}: ${n.displayName} - ${n.description}`).join('\n');
+  const candidateList = candidateBatch.map(n => `- ${n.id}: ${n.displayName} - ${n.description}`).join('\n');
 
   const directionText = direction === 'upstream'
     ? `could be a CAUSE of ${selectedNode.displayName} (would point TO it)`
     : `could be an EFFECT of ${selectedNode.displayName} (it would point TO this node)`;
 
-  const prompt = `You are evaluating potential causal relationships in a scientific model.
+  // Use a more concise prompt to avoid context limits
+  const prompt = `Experiment: ${experimentalContext.slice(0, 500)}${experimentalContext.length > 500 ? '...' : ''}
 
-Experiment context:
-${experimentalContext}
+TARGET: ${selectedNode.displayName}
+${selectedNode.description}
 
-EXISTING CAUSAL GRAPH:
-
-Variables in the model:
-${nodeList}
-
-Established causal relationships (cause → effect):
-${edgeList || '(none yet)'}
-
-TARGET VARIABLE: ${selectedNode.displayName}
-Description: ${selectedNode.description}
-
-CANDIDATE VARIABLES to evaluate as ${direction === 'upstream' ? 'CAUSES' : 'EFFECTS'}:
+Evaluate if each candidate ${directionText}:
 ${candidateList}
 
-For EACH candidate, evaluate whether it ${directionText}.
-
-Respond ONLY with valid JSON array, no markdown:
-[
-  {
-    "nodeId": "the_node_id",
-    "likelihood": "high" | "medium" | "low",
-    "rationale": "Brief explanation of the causal mechanism or why unlikely"
-  },
-  ...
-]
-
-Use "high" for well-established relationships, "medium" for plausible but uncertain, "low" for unlikely or would create problematic cycles.`;
+Respond with JSON array only:
+[{"nodeId": "id", "likelihood": "high"|"medium"|"low", "rationale": "brief reason"}]`;
 
   const response = await client.chat.completions.create({
     model: deploymentName,
     messages: [
       {
         role: 'system',
-        content: 'You are a scientific critic evaluating causal relationships. Be rigorous but fair. Respond with JSON only.'
+        content: 'You are a scientific critic. Evaluate causal plausibility. JSON only, no markdown.'
       },
       {
         role: 'user',
         content: prompt
       }
     ],
-    max_tokens: 2048,
+    max_tokens: 1024,
     temperature: 0.3
   });
 
+  addTokenUsage(response.usage);
+
   const content = response.choices[0]?.message?.content;
   if (!content) {
+    console.warn('No content in batch response');
     return [];
   }
 
@@ -608,13 +731,14 @@ Use "high" for well-established relationships, "medium" for plausible but uncert
   try {
     const parsed = JSON.parse(cleaned);
     if (!Array.isArray(parsed)) {
+      console.warn('Response not array:', cleaned.slice(0, 100));
       return [];
     }
 
     const results: ExistingNodeProposal[] = [];
     for (const item of parsed) {
       if (validateExistingNodeResponse(item)) {
-        const node = candidateNodes.find(n => n.id === item.nodeId);
+        const node = candidateBatch.find(n => n.id === item.nodeId);
         if (node) {
           results.push({
             id: `existing-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
@@ -629,14 +753,62 @@ Use "high" for well-established relationships, "medium" for plausible but uncert
         }
       }
     }
-
-    return results.sort((a, b) => {
-      const order = { high: 0, medium: 1, low: 2 };
-      return order[a.likelihood] - order[b.likelihood];
-    });
-  } catch {
+    return results;
+  } catch (err) {
+    console.error('Failed to parse batch response:', err, cleaned.slice(0, 200));
     return [];
   }
+}
+
+/**
+ * Evaluate existing nodes as potential causes/effects
+ * Batches candidates to avoid context limits
+ */
+export async function evaluateExistingNodes(
+  experimentalContext: string,
+  selectedNode: CausalNode,
+  candidateNodes: CausalNode[],
+  direction: 'upstream' | 'downstream',
+  _allNodes: CausalNode[],
+  _allEdges: { source: string; target: string }[]
+): Promise<ExistingNodeProposal[]> {
+  if (!endpoint || !apiKey) {
+    throw new Error('Azure OpenAI not configured');
+  }
+
+  if (candidateNodes.length === 0) {
+    return [];
+  }
+
+  // Batch candidates into groups of 8 to keep context manageable
+  const BATCH_SIZE = 8;
+  const batches: CausalNode[][] = [];
+  for (let i = 0; i < candidateNodes.length; i += BATCH_SIZE) {
+    batches.push(candidateNodes.slice(i, i + BATCH_SIZE));
+  }
+
+  console.log(`Evaluating ${candidateNodes.length} candidates in ${batches.length} batches`);
+
+  // Process batches in parallel (up to 3 at a time to avoid rate limits)
+  const allResults: ExistingNodeProposal[] = [];
+  const PARALLEL_LIMIT = 3;
+
+  for (let i = 0; i < batches.length; i += PARALLEL_LIMIT) {
+    const batchPromises = batches.slice(i, i + PARALLEL_LIMIT).map(batch =>
+      evaluateNodesBatch(experimentalContext, selectedNode, batch, direction)
+    );
+
+    const batchResults = await Promise.all(batchPromises);
+    for (const results of batchResults) {
+      allResults.push(...results);
+    }
+  }
+
+  // Sort by likelihood
+  return allResults.sort((a, b) => {
+    const order = { high: 0, medium: 1, low: 2 };
+    return order[a.likelihood] - order[b.likelihood];
+  });
 }
 
 /**
@@ -715,13 +887,14 @@ export async function generateAndAssessProposals(
         );
       }
 
-      // Assess with critic
+      // Assess with critic (use direction-specific prompt)
       const assessment = await assessProposal(
         experimentalContext,
         selectedNode,
         proposal,
         allNodes,
-        allEdges
+        allEdges,
+        direction
       );
 
       const assessedProposal: Proposal = {
@@ -736,6 +909,15 @@ export async function generateAndAssessProposals(
 
     const cycleResults = await Promise.all(cyclePromises);
     allProposals.push(...cycleResults);
+
+    // Consolidate duplicates after each cycle
+    const consolidated = await consolidateProposals(experimentalContext, allProposals);
+
+    // If consolidation removed any, update allProposals
+    if (consolidated.length < allProposals.length) {
+      allProposals.length = 0;
+      allProposals.push(...consolidated);
+    }
   }
 
   return allProposals;

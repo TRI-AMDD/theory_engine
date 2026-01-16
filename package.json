@@ -13,6 +13,7 @@
     "@anthropic-ai/sdk": "^0.71.2",
     "@dagrejs/dagre": "^1.1.8",
     "@xyflow/react": "^12.10.0",
+    "exceljs": "^4.4.0",
     "openai": "^6.16.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"

@@ -1,4 +1,39 @@
-import type { CausalNode, CausalEdge, CausalGraph } from '../types';
+import type { CausalNode, CausalEdge, CausalGraph, WhyzenMetadata } from '../types';
+import rdeWhyzenRaw from './rde_graph.json';
+
+// Helper to convert snake_case to Title Case
+function snakeToTitle(name: string): string {
+  return name.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+}
+
+// ============ PRESET 0: Whyzen RDE Model (Full) ============
+// Imported from Whyzen-RDE structural causal model
+const whyzenRdeNodes: CausalNode[] = rdeWhyzenRaw.nodes.map((n: {
+  id: string;
+  variableName: string;
+  displayName: string;
+  description: string;
+  position: { x: number; y: number };
+  _whyzen?: WhyzenMetadata;
+}) => ({
+  ...n,
+  // Fix broken display names (HTML parsing artifacts like "ref>")
+  displayName: n.displayName && !n.displayName.includes('>') && n.displayName.length > 0
+    ? n.displayName
+    : snakeToTitle(n.variableName),
+}));
+
+const whyzenRdeEdges: CausalEdge[] = rdeWhyzenRaw.edges.map((e: {
+  id: string;
+  source: string;
+  target: string;
+}) => ({
+  id: e.id,
+  source: e.source,
+  target: e.target,
+}));
+
+const whyzenRdeContext = rdeWhyzenRaw.experimentalContext || `This causal model represents a Rotating Disk Electrode (RDE) experiment for the Oxygen Reduction Reaction (ORR). It was imported from a Whyzen structural causal model with ${whyzenRdeNodes.length} nodes and ${whyzenRdeEdges.length} edges. The model captures relationships between catalyst properties, electrode construction, electrochemical kinetics, and mass transport.`;
 
 // ============ PRESET 1: RDE Catalysis Experiment ============
 const rdeContext = `This causal model represents factors affecting current density measurements in a rotating disc electrode (RDE) experiment for studying oxygen reduction reaction (ORR) catalysis. The RDE setup allows controlled mass transport through electrode rotation, enabling kinetic analysis of electrocatalyst performance. Key measurements include limiting current density and half-wave potential, which depend on catalyst properties, electrolyte composition, and experimental conditions.`;
@@ -414,6 +449,16 @@ export interface ExperimentPreset {
 
 export const experimentPresets: ExperimentPreset[] = [
   {
+    id: 'whyzen-rde',
+    name: 'Whyzen RDE (Full)',
+    description: `Whyzen ORR model (${whyzenRdeNodes.length} nodes, ${whyzenRdeEdges.length} edges)`,
+    graph: {
+      nodes: whyzenRdeNodes,
+      edges: whyzenRdeEdges,
+      experimentalContext: whyzenRdeContext
+    }
+  },
+  {
     id: 'battery',
     name: 'Battery Cycling',
     description: 'Lithium-ion coin cell capacity fade',
@@ -435,7 +480,7 @@ export const experimentPresets: ExperimentPreset[] = [
   },
   {
     id: 'rde',
-    name: 'RDE Catalysis',
+    name: 'RDE Catalysis (Simple)',
     description: 'Rotating disc electrode oxygen reduction',
     graph: {
       nodes: rdeNodes,
@@ -455,8 +500,8 @@ export const experimentPresets: ExperimentPreset[] = [
   }
 ];
 
-// Default export - Battery Cycling is now the default
+// Default export - Whyzen RDE is now the default
 export const initialGraph: CausalGraph = experimentPresets[0].graph;
-export const experimentalContext = batteryContext;
-export const initialNodes = batteryNodes;
-export const initialEdges = batteryEdges;
+export const experimentalContext = whyzenRdeContext;
+export const initialNodes = whyzenRdeNodes;
+export const initialEdges = whyzenRdeEdges;

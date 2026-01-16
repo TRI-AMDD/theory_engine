@@ -264,6 +264,55 @@ export const SidePanel: React.FC<SidePanelProps> = ({
         <p className="text-sm text-gray-700 leading-relaxed">
           {selectedNode.description}
         </p>
+
+        {/* Whyzen Metadata (if present) */}
+        {selectedNode._whyzen && (
+          <div className="mt-3 pt-3 border-t border-gray-200">
+            <p className="text-xs font-semibold text-indigo-600 mb-2">Whyzen Metadata</p>
+            <div className="space-y-1 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500 w-20">Node Type:</span>
+                <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 rounded font-mono">
+                  {selectedNode._whyzen.node_type}
+                </span>
+              </div>
+              {selectedNode._whyzen.mechanism_type && (
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500 w-20">Mechanism:</span>
+                  <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded font-mono text-xs">
+                    {selectedNode._whyzen.mechanism_type}
+                  </span>
+                </div>
+              )}
+              {selectedNode._whyzen.kernel_type && (
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500 w-20">Kernel:</span>
+                  <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded font-mono text-xs">
+                    {selectedNode._whyzen.kernel_type}
+                  </span>
+                </div>
+              )}
+              {selectedNode._whyzen.kernel_params && Object.keys(selectedNode._whyzen.kernel_params).length > 0 && (
+                <div className="flex items-start gap-2">
+                  <span className="text-gray-500 w-20">Params:</span>
+                  <span className="text-gray-700 font-mono">
+                    {Object.entries(selectedNode._whyzen.kernel_params).map(([k, v]) => `${k}=${v}`).join(', ')}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500 w-20">Level:</span>
+                <span className={`px-1.5 py-0.5 rounded font-mono ${
+                  selectedNode._whyzen.level === 'global' ? 'bg-blue-100 text-blue-700' :
+                  selectedNode._whyzen.level === 'experiment' ? 'bg-purple-100 text-purple-700' :
+                  'bg-orange-100 text-orange-700'
+                }`}>
+                  {selectedNode._whyzen.level}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Config Controls */}

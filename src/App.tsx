@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { CausalGraph, CausalNode, Proposal, ExistingNodeProposal, ProposalConfig } from './types';
 import { initialGraph, experimentPresets } from './data/initialData';
 import {
@@ -14,11 +14,20 @@ import {
   addEdgeSafe,
   removeEdge
 } from './utils/graph';
-import { generateAndAssessProposals, evaluateExistingNodes, type GraphContext } from './services/api';
+import {
+  generateAndAssessProposals,
+  evaluateExistingNodes,
+  type GraphContext,
+  type TokenUsage,
+  subscribeToTokenUpdates,
+  getSessionTokenUsage,
+  resetSessionTokenUsage
+} from './services/api';
 import { GraphCanvas } from './components/GraphCanvas';
 import { SidePanel } from './components/SidePanel';
 import { ProposalList } from './components/ProposalList';
 import { ContextHeader } from './components/ContextHeader';
+import { BuildFromDataWizard } from './components/BuildFromDataWizard';
 
 function App() {
   // Core state
@@ -29,6 +38,17 @@ function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingDirection, setGeneratingDirection] = useState<'upstream' | 'downstream' | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Token usage tracking
+  const [tokenUsage, setTokenUsage] = useState<TokenUsage>(getSessionTokenUsage());
+
+  // Build from Data wizard state
+  const [showBuildWizard, setShowBuildWizard] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToTokenUpdates(setTokenUsage);
+    return unsubscribe;
+  }, []);
 
   // Derived state: selected node and its upstream relationships
   const selectedNode = useMemo(() => {
@@ -283,6 +303,28 @@ function App() {
             Credit to conversations with Amanda Volk & Kevin Tran for idea
           </span>
         </div>
+
+        {/* Token Usage Display */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-slate-400">Tokens:</span>
+            <span className="font-mono bg-slate-700 px-2 py-0.5 rounded">
+              {tokenUsage.totalTokens.toLocaleString()}
+            </span>
+            <span className="text-slate-500">
+              ({tokenUsage.promptTokens.toLocaleString()}↑ {tokenUsage.completionTokens.toLocaleString()}↓)
+            </span>
+          </div>
+          {tokenUsage.totalTokens > 0 && (
+            <button
+              onClick={() => resetSessionTokenUsage()}
+              className="text-xs text-slate-400 hover:text-slate-200 px-1"
+              title="Reset token counter"
+            >
+              ↻
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Error Banner */}
@@ -318,6 +360,17 @@ function App() {
           />
           {/* Top-right controls */}
           <div className="absolute top-4 right-4 flex items-center gap-2">
+            {/* Build from Data button */}
+            <button
+              onClick={() => setShowBuildWizard(true)}
+              className="px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 shadow-sm flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Build from Data
+            </button>
+
             {/* Preset selector */}
             <select
               onChange={(e) => handleLoadPreset(e.target.value)}
@@ -371,6 +424,26 @@ function App() {
           />
         </SidePanel>
       </div>
+
+      {/* Build from Data Wizard */}
+      <BuildFromDataWizard
+        isOpen={showBuildWizard}
+        onClose={() => setShowBuildWizard(false)}
+        onPreviewGraph={(graph) => {
+          // Show graph in main view for preview (don't close wizard)
+          setGraph(graph);
+          setSelectedNodeId(null);
+          setProposals([]);
+          setExistingNodeProposals([]);
+        }}
+        onGraphBuilt={(graph) => {
+          setGraph(graph);
+          setShowBuildWizard(false);
+          setSelectedNodeId(null);
+          setProposals([]);
+          setExistingNodeProposals([]);
+        }}
+      />
     </div>
   );
 }

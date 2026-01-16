@@ -1,0 +1,193 @@
+{
+  "_description": "Glossary of Whyzen kernels and mechanisms for use as LLM context in Causeway",
+  "_version": "1.0",
+
+  "kernels": {
+    "DeltaProbabilityKernel": {
+      "description": "Point mass distribution - no uncertainty. The sampled value equals the mechanism output exactly.",
+      "use_case": "When you want a deterministic node with no noise.",
+      "params": []
+    },
+    "NormalProbabilityKernel": {
+      "description": "Gaussian/Normal distribution centered on mechanism output with fixed standard deviation.",
+      "use_case": "General measurement noise when values can be positive or negative. Good for additive errors.",
+      "params": ["std: fixed standard deviation"]
+    },
+    "LogNormalProbabilityKernel": {
+      "description": "Log-normal distribution where mechanism output is the mean. Values are always positive.",
+      "use_case": "Multiplicative noise for strictly positive quantities. Good when relative error matters more than absolute error.",
+      "params": ["std: scale in log space", "log_base: '10' or 'e'"]
+    },
+    "GammaProbabilityKernel": {
+      "description": "Gamma distribution where mechanism output is the mode. Values are always non-negative.",
+      "use_case": "Non-negative quantities with right-skewed uncertainty (e.g., rates, concentrations).",
+      "params": ["std: standard deviation"]
+    },
+    "UniformProbabilityKernel": {
+      "description": "Uniform distribution centered on mechanism output with specified bounds.",
+      "use_case": "When all values in a range are equally likely. Good for bounded parameters.",
+      "params": ["lower_extension: distance below value", "upper_extension: distance above value"]
+    },
+    "RelativeNormalProbabilityKernel": {
+      "description": "Normal distribution where std = relative_std × value. Uncertainty scales with magnitude.",
+      "use_case": "When measurement error is proportional to the measured value (e.g., 5% error).",
+      "params": ["relative_std: fraction of value to use as std (e.g., 0.05 = 5%)"]
+    },
+    "FoldedNormalProbabilityKernel": {
+      "description": "Folded normal - takes absolute value of normal samples. Always non-negative.",
+      "use_case": "When values must be positive but normal-like noise is appropriate.",
+      "params": ["std: standard deviation of underlying normal"]
+    },
+    "FoldedRelativeNormalProbabilityKernel": {
+      "description": "Folded relative normal - relative std scaled by value, folded to be non-negative.",
+      "use_case": "Proportional measurement error for strictly positive quantities. Very common choice.",
+      "params": ["relative_std: fraction of value (e.g., 0.05 = 5% uncertainty)"]
+    },
+    "BetaProbabilityKernel": {
+      "description": "Beta distribution for values between 0 and 1. Mechanism output is the mean.",
+      "use_case": "Probabilities, fractions, ratios, efficiencies - anything bounded [0,1].",
+      "params": ["var_frac: fraction of max possible variance (0-1, lower = tighter)"]
+    },
+    "BernoulliProbabilityKernel": {
+      "description": "Bernoulli distribution - binary outcomes (0 or 1).",
+      "use_case": "Binary events, success/failure, presence/absence.",
+      "params": []
+    },
+    "DirichletProbabilityKernel": {
+      "description": "Dirichlet distribution for vectors that sum to 1 (compositional data).",
+      "use_case": "Mixture compositions, probability vectors, market shares.",
+      "params": []
+    }
+  },
+
+  "mechanisms": {
+    "core": {
+      "RootValue": {
+        "description": "Returns a constant value. Used for root nodes that have no parents.",
+        "formula": "output = constant",
+        "use_case": "Input parameters, fixed constants, user-specified values."
+      },
+      "IdentityMechanism": {
+        "description": "Pass-through - returns input unchanged.",
+        "formula": "output = input",
+        "use_case": "When you need a node that just copies another node's value."
+      },
+      "LinearMechanism": {
+        "description": "Multiplies input by a constant weight.",
+        "formula": "output = input × weight",
+        "use_case": "Scaling, unit conversions, proportional relationships."
+      },
+      "SummationMechanism": {
+        "description": "Sums all input tensors element-wise.",
+        "formula": "output = Σ inputs",
+        "use_case": "Combining additive contributions (e.g., total = part1 + part2)."
+      },
+      "ProductMechanism": {
+        "description": "Multiplies all input tensors element-wise.",
+        "formula": "output = Π inputs",
+        "use_case": "Combining multiplicative factors (e.g., area = length × width)."
+      },
+      "DivisionMechanism": {
+        "description": "Divides numerator by denominator.",
+        "formula": "output = numerator / denominator",
+        "use_case": "Ratios, densities, normalization, unit conversions."
+      },
+      "SigmoidMechanism": {
+        "description": "Applies logistic sigmoid function.",
+        "formula": "output = 1 / (1 + exp(-input))",
+        "use_case": "Squashing unbounded values to (0,1), soft thresholds."
+      },
+      "NeuralNetworkMechanism": {
+        "description": "Applies a neural network to inputs.",
+        "formula": "output = NN(input)",
+        "use_case": "Complex nonlinear relationships learned from data."
+      }
+    },
+    "electrochemistry_rde": {
+      "MolecularWeightMechanism": {
+        "description": "Calculates molecular weight from chemical composition.",
+        "formula": "MW = f(composition)",
+        "use_case": "Converting composition to molar mass for stoichiometry.",
+        "domain": "chemistry"
+      },
+      "SiteDensityMechanism": {
+        "description": "Calculates catalyst site density from molecular weight and surface area.",
+        "formula": "Γ = 1 / (MW × SSA)",
+        "use_case": "Determining how many reactive sites per unit area.",
+        "domain": "catalysis"
+      },
+      "OverpotentialMechanism": {
+        "description": "Calculates overpotential (driving force) from applied potential and reference.",
+        "formula": "η = -(V - V_ref), clamped ≤ 0",
+        "use_case": "Electrochemical driving force for reactions.",
+        "domain": "electrochemistry"
+      },
+      "VolcanoMechanism": {
+        "description": "Volcano plot relationship between binding energy and turnover frequency.",
+        "formula": "ToF = min(exp(m1×ΔG + b1), exp(m2×ΔG + b2))",
+        "use_case": "Sabatier principle - optimal binding gives max activity.",
+        "domain": "catalysis"
+      },
+      "ExchangeCurrentDensityMechanism": {
+        "description": "Calculates exchange current density from turnover frequency and active sites.",
+        "formula": "i₀ = ToF × n × N × F / A",
+        "use_case": "Intrinsic catalytic activity metric.",
+        "domain": "electrochemistry"
+      },
+      "ButlerVolmerMechanism": {
+        "description": "Butler-Volmer kinetics for electrode reactions.",
+        "formula": "i = i₀ × exp(α×n×F×η / RT)",
+        "use_case": "Kinetic current from overpotential - exponential activation.",
+        "domain": "electrochemistry"
+      },
+      "LevichMechanism": {
+        "description": "Levich equation for mass transport limited current at rotating disk electrode.",
+        "formula": "i_lim = 0.62×n×F×D^(2/3)×ω^(1/2)×ν^(-1/6)×C",
+        "use_case": "Diffusion-limited current - how fast reactants reach surface.",
+        "domain": "electrochemistry"
+      },
+      "KouteckyLevichMechanism": {
+        "description": "Combines kinetic and mass transport limitations.",
+        "formula": "1/i = 1/i_k + 1/i_lim",
+        "use_case": "Total current when both kinetics and diffusion matter.",
+        "domain": "electrochemistry"
+      }
+    }
+  },
+
+  "node_types": {
+    "RootNode": {
+      "description": "A node with no parents. Has a constant mechanism value plus a probability kernel for uncertainty.",
+      "has_parents": false,
+      "has_mechanism": false,
+      "has_kernel": true
+    },
+    "DeterministicRootNode": {
+      "description": "A node with no parents and no uncertainty. Pure constant value.",
+      "has_parents": false,
+      "has_mechanism": false,
+      "has_kernel": false
+    },
+    "Node": {
+      "description": "A node with parents (mechanism_kwargs). Mechanism computes deterministic value, kernel adds noise.",
+      "has_parents": true,
+      "has_mechanism": true,
+      "has_kernel": true
+    },
+    "DeterministicNode": {
+      "description": "A node with parents but no uncertainty. Deterministic function of its inputs.",
+      "has_parents": true,
+      "has_mechanism": true,
+      "has_kernel": false
+    }
+  },
+
+  "kernel_selection_guide": {
+    "positive_quantities": ["FoldedRelativeNormalProbabilityKernel", "LogNormalProbabilityKernel", "GammaProbabilityKernel"],
+    "bounded_0_1": ["BetaProbabilityKernel"],
+    "proportional_error": ["RelativeNormalProbabilityKernel", "FoldedRelativeNormalProbabilityKernel"],
+    "fixed_absolute_error": ["NormalProbabilityKernel", "FoldedNormalProbabilityKernel"],
+    "uniform_range": ["UniformProbabilityKernel"],
+    "no_uncertainty": ["DeltaProbabilityKernel"]
+  }
+}

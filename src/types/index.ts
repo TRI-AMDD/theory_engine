@@ -1,3 +1,12 @@
+// Whyzen-specific metadata (preserved during import/export)
+export interface WhyzenMetadata {
+  node_type: 'RootNode' | 'DeterministicRootNode' | 'Node' | 'DeterministicNode' | string;
+  mechanism_type: string | null;
+  kernel_type: string | null;
+  kernel_params: Record<string, string>;
+  level: 'global' | 'experiment' | 'timepoint' | string;
+}
+
 // Causal node representing a factor in the experiment
 export interface CausalNode {
   id: string;
@@ -6,6 +15,8 @@ export interface CausalNode {
   description: string;       // what this variable represents
   // Position for react-flow
   position?: { x: number; y: number };
+  // Whyzen metadata (optional - present when imported from Whyzen)
+  _whyzen?: WhyzenMetadata;
 }
 
 // Directed edge from source (cause) to target (effect)
@@ -53,4 +64,32 @@ export interface ExistingNodeProposal {
 export interface ProposalConfig {
   numCycles: number;         // Number of generation rounds
   numProposalsPerCycle: number;  // Proposals per round
+}
+
+// ============================================
+// Build from Data Types
+// ============================================
+
+// A data column for graph building
+export interface DataColumn {
+  name: string;
+  description?: string;
+}
+
+// Configuration for the graph builder
+export interface GraphBuilderConfig {
+  preset: 'fast' | 'balanced' | 'heavy' | 'custom';
+  iterations: number;  // 1 for fast, 2-3 for balanced, 4+ for heavy
+}
+
+// Result from the graph builder
+export interface GraphBuildResult {
+  graph: CausalGraph;
+  iterations: number;
+  critiqueSummary: string;
+  tokenUsage: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
 }

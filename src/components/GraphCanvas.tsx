@@ -221,28 +221,54 @@ function GraphCanvasInner({ graph, selectedNodeId, onNodeSelect, onNodePositions
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges] = useEdgesState(initialEdges);
 
-  // Update nodes when graph or selection changes
+  // Track the previous graph signature to detect real graph changes vs just selection changes
+  const [prevGraphSignature, setPrevGraphSignature] = useState<string | null>(null);
+  const graphStructureChanged = prevGraphSignature !== graphSignature;
+  const isInitialMount = prevGraphSignature === null;
+
+  // Update nodes when selection changes - only update styles, not positions
   useEffect(() => {
-    setNodes(initialNodes);
-  }, [initialNodes, setNodes]);
+    if (!graphStructureChanged && !isInitialMount) {
+      // Selection change only - update styles without touching positions
+      setNodes(currentNodes =>
+        currentNodes.map(node => {
+          const initialNode = initialNodes.find(n => n.id === node.id);
+          if (initialNode) {
+            return {
+              ...node,
+              style: initialNode.style,
+              selected: initialNode.selected
+            };
+          }
+          return node;
+        })
+      );
+    } else {
+      // Graph structure changed or initial mount - full update
+      setNodes(initialNodes);
+    }
+  }, [initialNodes, setNodes, graphStructureChanged, isInitialMount]);
 
   useEffect(() => {
     setEdges(initialEdges);
   }, [initialEdges, setEdges]);
 
-  // Reset layout flag when graph changes (e.g., preset load)
+  // Reset layout flag when graph structure changes (e.g., preset load, node added)
   useEffect(() => {
-    setHasInitialLayout(false);
-  }, [graphSignature]);
+    if (graphStructureChanged || isInitialMount) {
+      setHasInitialLayout(false);
+    }
+  }, [graphStructureChanged, isInitialMount]);
 
-  // Auto-layout on initial mount or after graph changes
+  // Auto-layout on initial mount or after graph structure changes
   useEffect(() => {
     if (!hasInitialLayout && nodes.length > 0) {
       const { nodes: layoutedNodes } = getLayoutedElements(nodes, edges, 'TB');
       setNodes(layoutedNodes);
       setHasInitialLayout(true);
+      setPrevGraphSignature(graphSignature);
     }
-  }, [nodes, edges, hasInitialLayout, setNodes]);
+  }, [nodes.length, edges, hasInitialLayout, setNodes, graphSignature]);
 
   // Handle node position changes (drag and drop)
   const handleNodesChange = useCallback((changes: NodeChange[]) => {

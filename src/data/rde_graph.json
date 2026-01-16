@@ -1,0 +1,1140 @@
+{
+  "nodes": [
+    {
+      "id": "reference_voltage",
+      "variableName": "reference_voltage",
+      "displayName": "ref>",
+      "description": "GUESS: Input parameter or constant",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "RootNode",
+        "mechanism_type": null,
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "global"
+      }
+    },
+    {
+      "id": "temperature",
+      "variableName": "temperature",
+      "displayName": "",
+      "description": "GUESS: Thermodynamic temperature of the system",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "RootNode",
+        "mechanism_type": null,
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "global"
+      }
+    },
+    {
+      "id": "geometric_surface_area",
+      "variableName": "geometric_surface_area",
+      "displayName": "cell>",
+      "description": "GUESS: Surface or geometric area",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "RootNode",
+        "mechanism_type": null,
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "global"
+      }
+    },
+    {
+      "id": "o2_diffusivity_in_electrolyte",
+      "variableName": "o2_diffusivity_in_electrolyte",
+      "displayName": "electrolyte>",
+      "description": "GUESS: Diffusion coefficient - how fast species moves",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "RootNode",
+        "mechanism_type": null,
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "global"
+      }
+    },
+    {
+      "id": "o2_diffusivity_in_electrode",
+      "variableName": "o2_diffusivity_in_electrode",
+      "displayName": "electrode>",
+      "description": "GUESS: Diffusion coefficient - how fast species moves",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "RootNode",
+        "mechanism_type": null,
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "global"
+      }
+    },
+    {
+      "id": "electrolyte_kinematic_viscosity",
+      "variableName": "electrolyte_kinematic_viscosity",
+      "displayName": "\u03bd",
+      "description": "GUESS: Fluid resistance to flow",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "RootNode",
+        "mechanism_type": null,
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "global"
+      }
+    },
+    {
+      "id": "bulk_o2_concentration",
+      "variableName": "bulk_o2_concentration",
+      "displayName": "b>",
+      "description": "GUESS: Species concentration in solution/gas",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "RootNode",
+        "mechanism_type": null,
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "global"
+      }
+    },
+    {
+      "id": "rotation_rate",
+      "variableName": "rotation_rate",
+      "displayName": "\u03c9",
+      "description": "GUESS: Speed of process or reaction",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "RootNode",
+        "mechanism_type": null,
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "global"
+      }
+    },
+    {
+      "id": "composition",
+      "variableName": "composition",
+      "displayName": "cat>",
+      "description": "GUESS: Input parameter or constant",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "DeterministicRootNode",
+        "mechanism_type": null,
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "global"
+      }
+    },
+    {
+      "id": "adsorbate_binding_energy",
+      "variableName": "adsorbate_binding_energy",
+      "displayName": "HO*>",
+      "description": "GUESS: Input parameter or constant",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "RootNode",
+        "mechanism_type": null,
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "global"
+      }
+    },
+    {
+      "id": "volumetric_density_catalyst",
+      "variableName": "volumetric_density_catalyst",
+      "displayName": "cat>",
+      "description": "GUESS: Mass or number per unit volume",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "RootNode",
+        "mechanism_type": null,
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "global"
+      }
+    },
+    {
+      "id": "specific_surface_area_catalyst",
+      "variableName": "specific_surface_area_catalyst",
+      "displayName": "cat>",
+      "description": "GUESS: Surface or geometric area",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "RootNode",
+        "mechanism_type": null,
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "global"
+      }
+    },
+    {
+      "id": "charge_transfer_coefficient",
+      "variableName": "charge_transfer_coefficient",
+      "displayName": "",
+      "description": "GUESS: Dimensionless parameter relating quantities",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "RootNode",
+        "mechanism_type": null,
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "global"
+      }
+    },
+    {
+      "id": "n_electrons",
+      "variableName": "n_electrons",
+      "displayName": "",
+      "description": "GUESS: Input parameter or constant",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "RootNode",
+        "mechanism_type": null,
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "global"
+      }
+    },
+    {
+      "id": "specific_capacitance_catalyst",
+      "variableName": "specific_capacitance_catalyst",
+      "displayName": "cat>",
+      "description": "GUESS: Charge storage capacity",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "RootNode",
+        "mechanism_type": null,
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "global"
+      }
+    },
+    {
+      "id": "molecular_weight",
+      "variableName": "molecular_weight",
+      "displayName": "cat>",
+      "description": "GUESS: Computed via molecular_weight_mechanism | Depends on: composition || Mechanism: molecular_weight_mechanism",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "Node",
+        "mechanism_type": "molecular_weight_mechanism",
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "global"
+      }
+    },
+    {
+      "id": "site_areal_density",
+      "variableName": "site_areal_density",
+      "displayName": "site>",
+      "description": "GUESS: Computed via site_areal_density_mechanism | Depends on: molecular_weight, specific_surface_area_catalyst || Mechanism: site_areal_density_mechanism",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "Node",
+        "mechanism_type": "site_areal_density_mechanism",
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "global"
+      }
+    },
+    {
+      "id": "tof",
+      "variableName": "tof",
+      "displayName": "",
+      "description": "GUESS: Computed via tof_mechanism | Depends on: adsorbate_binding_energy || Mechanism: tof_mechanism",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "Node",
+        "mechanism_type": "tof_mechanism",
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "global"
+      }
+    },
+    {
+      "id": "volumetric_density_support",
+      "variableName": "volumetric_density_support",
+      "displayName": "sup>",
+      "description": "GUESS: Mass or number per unit volume",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "RootNode",
+        "mechanism_type": null,
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "global"
+      }
+    },
+    {
+      "id": "specific_surface_area_support",
+      "variableName": "specific_surface_area_support",
+      "displayName": "sup>",
+      "description": "GUESS: Surface or geometric area",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "RootNode",
+        "mechanism_type": null,
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "global"
+      }
+    },
+    {
+      "id": "specific_capacitance_support",
+      "variableName": "specific_capacitance_support",
+      "displayName": "sup>",
+      "description": "GUESS: Charge storage capacity",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "RootNode",
+        "mechanism_type": null,
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "global"
+      }
+    },
+    {
+      "id": "support_ratio",
+      "variableName": "support_ratio",
+      "displayName": "",
+      "description": "GUESS: Input parameter or constant",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "RootNode",
+        "mechanism_type": null,
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "experiment"
+      }
+    },
+    {
+      "id": "area_loading_total",
+      "variableName": "area_loading_total",
+      "displayName": "electrode>",
+      "description": "GUESS: Amount of material deposited per unit area",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "RootNode",
+        "mechanism_type": null,
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "experiment"
+      }
+    },
+    {
+      "id": "surface_area_electrode",
+      "variableName": "surface_area_electrode",
+      "displayName": "elec>",
+      "description": "GUESS: Computed via surface_area_mechanism | Depends on: surface_area_catalyst, surface_area_support || Mechanism: surface_area_mechanism",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "Node",
+        "mechanism_type": "surface_area_mechanism",
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "experiment"
+      }
+    },
+    {
+      "id": "ecsa",
+      "variableName": "ecsa",
+      "displayName": "active>",
+      "description": "GUESS: Computed via ecsa_mechanism | Depends on: ecsa_cat, ecsa_sup || Mechanism: ecsa_mechanism",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "Node",
+        "mechanism_type": "ecsa_mechanism",
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "experiment"
+      }
+    },
+    {
+      "id": "capacitive_double_layer_total",
+      "variableName": "capacitive_double_layer_total",
+      "displayName": "DL>",
+      "description": "GUESS: Computed via capacitive_double_layer_mechanism | Depends on: capacitive_double_layer_cat, capacitive_double_layer_sup || Mechanism: capacitive_double_layer_mechanism",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "Node",
+        "mechanism_type": "capacitive_double_layer_mechanism",
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "experiment"
+      }
+    },
+    {
+      "id": "electrode_thickness",
+      "variableName": "electrode_thickness",
+      "displayName": "elec>",
+      "description": "GUESS: Computed via electrode_thickness_mechanism | Depends on: catalyst_thickness, support_thickness || Mechanism: electrode_thickness_mechanism",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "Node",
+        "mechanism_type": "electrode_thickness_mechanism",
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "experiment"
+      }
+    },
+    {
+      "id": "mass_loading_catalyst",
+      "variableName": "mass_loading_catalyst",
+      "displayName": "cat>",
+      "description": "GUESS: Computed via mass_loading_catalyst_mechanism | Depends on: area_loading_total, geometric_surface_area || Mechanism: mass_loading_catalyst_mechanism",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "DeterministicNode",
+        "mechanism_type": "mass_loading_catalyst_mechanism",
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "experiment"
+      }
+    },
+    {
+      "id": "echem_utilization_cat",
+      "variableName": "echem_utilization_cat",
+      "displayName": "echem,cat>",
+      "description": "GUESS: Input parameter or constant",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "RootNode",
+        "mechanism_type": null,
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "experiment"
+      }
+    },
+    {
+      "id": "surface_area_catalyst",
+      "variableName": "surface_area_catalyst",
+      "displayName": "cat>",
+      "description": "GUESS: Computed via catalyst_surface_area_mechanism | Depends on: mass_loading_catalyst, specific_surface_area_catalyst || Mechanism: catalyst_surface_area_mechanism",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "DeterministicNode",
+        "mechanism_type": "catalyst_surface_area_mechanism",
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "experiment"
+      }
+    },
+    {
+      "id": "ecsa_cat",
+      "variableName": "ecsa_cat",
+      "displayName": "cat>",
+      "description": "GUESS: Computed via ecsa_cat_mechanism | Depends on: surface_area_catalyst, echem_utilization_cat || Mechanism: ecsa_cat_mechanism",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "DeterministicNode",
+        "mechanism_type": "ecsa_cat_mechanism",
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "experiment"
+      }
+    },
+    {
+      "id": "capacitive_double_layer_cat",
+      "variableName": "capacitive_double_layer_cat",
+      "displayName": "DL,cat>",
+      "description": "GUESS: Computed via capacitive_double_layer_cat_mechanism | Depends on: ecsa_cat, specific_capacitance_catalyst || Mechanism: capacitive_double_layer_cat_mechanism",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "DeterministicNode",
+        "mechanism_type": "capacitive_double_layer_cat_mechanism",
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "experiment"
+      }
+    },
+    {
+      "id": "area_loading_catalyst",
+      "variableName": "area_loading_catalyst",
+      "displayName": "cat>",
+      "description": "GUESS: Computed via area_loading_catalyst_mechanism | Depends on: mass_loading_catalyst, geometric_surface_area || Mechanism: area_loading_catalyst_mechanism",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "Node",
+        "mechanism_type": "area_loading_catalyst_mechanism",
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "experiment"
+      }
+    },
+    {
+      "id": "catalyst_thickness",
+      "variableName": "catalyst_thickness",
+      "displayName": "cat>",
+      "description": "GUESS: Computed via catalyst_thickness_mechanism | Depends on: area_loading_catalyst, volumetric_density_catalyst || Mechanism: catalyst_thickness_mechanism",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "DeterministicNode",
+        "mechanism_type": "catalyst_thickness_mechanism",
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "experiment"
+      }
+    },
+    {
+      "id": "mass_loading_support",
+      "variableName": "mass_loading_support",
+      "displayName": "sup>",
+      "description": "GUESS: Computed via mass_loading_support_mechanism | Depends on: area_loading_total, support_ratio, geometric_surface_area || Mechanism: mass_loading_support_mechanism",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "DeterministicNode",
+        "mechanism_type": "mass_loading_support_mechanism",
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "experiment"
+      }
+    },
+    {
+      "id": "echem_utilization_sup",
+      "variableName": "echem_utilization_sup",
+      "displayName": "echem,sup>",
+      "description": "GUESS: Input parameter or constant",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "RootNode",
+        "mechanism_type": null,
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "experiment"
+      }
+    },
+    {
+      "id": "surface_area_support",
+      "variableName": "surface_area_support",
+      "displayName": "sup>",
+      "description": "GUESS: Computed via support_surface_area_mechanism | Depends on: mass_loading_support, specific_surface_area_support || Mechanism: support_surface_area_mechanism",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "DeterministicNode",
+        "mechanism_type": "support_surface_area_mechanism",
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "experiment"
+      }
+    },
+    {
+      "id": "ecsa_sup",
+      "variableName": "ecsa_sup",
+      "displayName": "sup>",
+      "description": "GUESS: Computed via ecsa_sup_mechanism | Depends on: surface_area_support, echem_utilization_sup || Mechanism: ecsa_sup_mechanism",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "DeterministicNode",
+        "mechanism_type": "ecsa_sup_mechanism",
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "experiment"
+      }
+    },
+    {
+      "id": "capacitive_double_layer_sup",
+      "variableName": "capacitive_double_layer_sup",
+      "displayName": "DL,sup>",
+      "description": "GUESS: Computed via capacitive_double_layer_sup_mechanism | Depends on: ecsa_sup, specific_capacitance_support || Mechanism: capacitive_double_layer_sup_mechanism",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "DeterministicNode",
+        "mechanism_type": "capacitive_double_layer_sup_mechanism",
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "experiment"
+      }
+    },
+    {
+      "id": "area_loading_support",
+      "variableName": "area_loading_support",
+      "displayName": "sup>",
+      "description": "GUESS: Computed via area_loading_support_mechanism | Depends on: mass_loading_support, geometric_surface_area || Mechanism: area_loading_support_mechanism",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "Node",
+        "mechanism_type": "area_loading_support_mechanism",
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "experiment"
+      }
+    },
+    {
+      "id": "support_thickness",
+      "variableName": "support_thickness",
+      "displayName": "sup>",
+      "description": "GUESS: Computed via support_thickness_mechanism | Depends on: area_loading_support, volumetric_density_support || Mechanism: support_thickness_mechanism",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "DeterministicNode",
+        "mechanism_type": "support_thickness_mechanism",
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "experiment"
+      }
+    },
+    {
+      "id": "frac_active_sites",
+      "variableName": "frac_active_sites",
+      "displayName": "active>",
+      "description": "GUESS: Input parameter or constant",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "RootNode",
+        "mechanism_type": null,
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "experiment"
+      }
+    },
+    {
+      "id": "n_active_sites",
+      "variableName": "n_active_sites",
+      "displayName": "sites>",
+      "description": "GUESS: Computed via n_active_sites_mechanism | Depends on: ecsa, site_areal_density, frac_active_sites || Mechanism: n_active_sites_mechanism",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "DeterministicNode",
+        "mechanism_type": "n_active_sites_mechanism",
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "experiment"
+      }
+    },
+    {
+      "id": "exchange_current_density",
+      "variableName": "exchange_current_density",
+      "displayName": "0>",
+      "description": "GUESS: Computed via exchange_current_density_mechanism | Depends on: tof, geometric_surface_area, n_active_sites (+1 more) || Mechanism: exchange_current_density_mechanism",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "Node",
+        "mechanism_type": "exchange_current_density_mechanism",
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "experiment"
+      }
+    },
+    {
+      "id": "potential",
+      "variableName": "potential",
+      "displayName": "",
+      "description": "GUESS: Applied electrical potential",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "RootNode",
+        "mechanism_type": null,
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "timepoint"
+      }
+    },
+    {
+      "id": "overpotential",
+      "variableName": "overpotential",
+      "displayName": "\u03b7",
+      "description": "GUESS: Computed via overpotential_mechanism | Depends on: potential, reference_voltage || Mechanism: overpotential_mechanism",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "DeterministicNode",
+        "mechanism_type": "overpotential_mechanism",
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "timepoint"
+      }
+    },
+    {
+      "id": "kinetic_current",
+      "variableName": "kinetic_current",
+      "displayName": "k>",
+      "description": "GUESS: Computed via kinetic_mechanism | Depends on: overpotential, temperature, exchange_current_density (+2 more) || Mechanism: kinetic_mechanism",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "Node",
+        "mechanism_type": "kinetic_mechanism",
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "timepoint"
+      }
+    },
+    {
+      "id": "limiting_current_density",
+      "variableName": "limiting_current_density",
+      "displayName": "lim>",
+      "description": "GUESS: Computed via levich_mechanism | Depends on: rotation_rate, electrode_thickness, n_electrons (+4 more) || Mechanism: levich_mechanism",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "Node",
+        "mechanism_type": "levich_mechanism",
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "timepoint"
+      }
+    },
+    {
+      "id": "total_current_density",
+      "variableName": "total_current_density",
+      "displayName": "",
+      "description": "GUESS: Computed via total_current_density_mechanism | Depends on: kinetic_current, limiting_current_density || Mechanism: total_current_density_mechanism",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "_whyzen": {
+        "node_type": "Node",
+        "mechanism_type": "total_current_density_mechanism",
+        "kernel_type": null,
+        "kernel_params": {},
+        "level": "timepoint"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "composition->molecular_weight",
+      "source": "composition",
+      "target": "molecular_weight"
+    },
+    {
+      "id": "molecular_weight->site_areal_density",
+      "source": "molecular_weight",
+      "target": "site_areal_density"
+    },
+    {
+      "id": "specific_surface_area_catalyst->site_areal_density",
+      "source": "specific_surface_area_catalyst",
+      "target": "site_areal_density"
+    },
+    {
+      "id": "adsorbate_binding_energy->tof",
+      "source": "adsorbate_binding_energy",
+      "target": "tof"
+    },
+    {
+      "id": "surface_area_catalyst->surface_area_electrode",
+      "source": "surface_area_catalyst",
+      "target": "surface_area_electrode"
+    },
+    {
+      "id": "surface_area_support->surface_area_electrode",
+      "source": "surface_area_support",
+      "target": "surface_area_electrode"
+    },
+    {
+      "id": "ecsa_cat->ecsa",
+      "source": "ecsa_cat",
+      "target": "ecsa"
+    },
+    {
+      "id": "ecsa_sup->ecsa",
+      "source": "ecsa_sup",
+      "target": "ecsa"
+    },
+    {
+      "id": "capacitive_double_layer_cat->capacitive_double_layer_total",
+      "source": "capacitive_double_layer_cat",
+      "target": "capacitive_double_layer_total"
+    },
+    {
+      "id": "capacitive_double_layer_sup->capacitive_double_layer_total",
+      "source": "capacitive_double_layer_sup",
+      "target": "capacitive_double_layer_total"
+    },
+    {
+      "id": "catalyst_thickness->electrode_thickness",
+      "source": "catalyst_thickness",
+      "target": "electrode_thickness"
+    },
+    {
+      "id": "support_thickness->electrode_thickness",
+      "source": "support_thickness",
+      "target": "electrode_thickness"
+    },
+    {
+      "id": "area_loading_total->mass_loading_catalyst",
+      "source": "area_loading_total",
+      "target": "mass_loading_catalyst"
+    },
+    {
+      "id": "geometric_surface_area->mass_loading_catalyst",
+      "source": "geometric_surface_area",
+      "target": "mass_loading_catalyst"
+    },
+    {
+      "id": "mass_loading_catalyst->surface_area_catalyst",
+      "source": "mass_loading_catalyst",
+      "target": "surface_area_catalyst"
+    },
+    {
+      "id": "specific_surface_area_catalyst->surface_area_catalyst",
+      "source": "specific_surface_area_catalyst",
+      "target": "surface_area_catalyst"
+    },
+    {
+      "id": "surface_area_catalyst->ecsa_cat",
+      "source": "surface_area_catalyst",
+      "target": "ecsa_cat"
+    },
+    {
+      "id": "echem_utilization_cat->ecsa_cat",
+      "source": "echem_utilization_cat",
+      "target": "ecsa_cat"
+    },
+    {
+      "id": "ecsa_cat->capacitive_double_layer_cat",
+      "source": "ecsa_cat",
+      "target": "capacitive_double_layer_cat"
+    },
+    {
+      "id": "specific_capacitance_catalyst->capacitive_double_layer_cat",
+      "source": "specific_capacitance_catalyst",
+      "target": "capacitive_double_layer_cat"
+    },
+    {
+      "id": "mass_loading_catalyst->area_loading_catalyst",
+      "source": "mass_loading_catalyst",
+      "target": "area_loading_catalyst"
+    },
+    {
+      "id": "geometric_surface_area->area_loading_catalyst",
+      "source": "geometric_surface_area",
+      "target": "area_loading_catalyst"
+    },
+    {
+      "id": "area_loading_catalyst->catalyst_thickness",
+      "source": "area_loading_catalyst",
+      "target": "catalyst_thickness"
+    },
+    {
+      "id": "volumetric_density_catalyst->catalyst_thickness",
+      "source": "volumetric_density_catalyst",
+      "target": "catalyst_thickness"
+    },
+    {
+      "id": "area_loading_total->mass_loading_support",
+      "source": "area_loading_total",
+      "target": "mass_loading_support"
+    },
+    {
+      "id": "support_ratio->mass_loading_support",
+      "source": "support_ratio",
+      "target": "mass_loading_support"
+    },
+    {
+      "id": "geometric_surface_area->mass_loading_support",
+      "source": "geometric_surface_area",
+      "target": "mass_loading_support"
+    },
+    {
+      "id": "mass_loading_support->surface_area_support",
+      "source": "mass_loading_support",
+      "target": "surface_area_support"
+    },
+    {
+      "id": "specific_surface_area_support->surface_area_support",
+      "source": "specific_surface_area_support",
+      "target": "surface_area_support"
+    },
+    {
+      "id": "surface_area_support->ecsa_sup",
+      "source": "surface_area_support",
+      "target": "ecsa_sup"
+    },
+    {
+      "id": "echem_utilization_sup->ecsa_sup",
+      "source": "echem_utilization_sup",
+      "target": "ecsa_sup"
+    },
+    {
+      "id": "ecsa_sup->capacitive_double_layer_sup",
+      "source": "ecsa_sup",
+      "target": "capacitive_double_layer_sup"
+    },
+    {
+      "id": "specific_capacitance_support->capacitive_double_layer_sup",
+      "source": "specific_capacitance_support",
+      "target": "capacitive_double_layer_sup"
+    },
+    {
+      "id": "mass_loading_support->area_loading_support",
+      "source": "mass_loading_support",
+      "target": "area_loading_support"
+    },
+    {
+      "id": "geometric_surface_area->area_loading_support",
+      "source": "geometric_surface_area",
+      "target": "area_loading_support"
+    },
+    {
+      "id": "area_loading_support->support_thickness",
+      "source": "area_loading_support",
+      "target": "support_thickness"
+    },
+    {
+      "id": "volumetric_density_support->support_thickness",
+      "source": "volumetric_density_support",
+      "target": "support_thickness"
+    },
+    {
+      "id": "ecsa->n_active_sites",
+      "source": "ecsa",
+      "target": "n_active_sites"
+    },
+    {
+      "id": "site_areal_density->n_active_sites",
+      "source": "site_areal_density",
+      "target": "n_active_sites"
+    },
+    {
+      "id": "frac_active_sites->n_active_sites",
+      "source": "frac_active_sites",
+      "target": "n_active_sites"
+    },
+    {
+      "id": "tof->exchange_current_density",
+      "source": "tof",
+      "target": "exchange_current_density"
+    },
+    {
+      "id": "geometric_surface_area->exchange_current_density",
+      "source": "geometric_surface_area",
+      "target": "exchange_current_density"
+    },
+    {
+      "id": "n_active_sites->exchange_current_density",
+      "source": "n_active_sites",
+      "target": "exchange_current_density"
+    },
+    {
+      "id": "n_electrons->exchange_current_density",
+      "source": "n_electrons",
+      "target": "exchange_current_density"
+    },
+    {
+      "id": "potential->overpotential",
+      "source": "potential",
+      "target": "overpotential"
+    },
+    {
+      "id": "reference_voltage->overpotential",
+      "source": "reference_voltage",
+      "target": "overpotential"
+    },
+    {
+      "id": "overpotential->kinetic_current",
+      "source": "overpotential",
+      "target": "kinetic_current"
+    },
+    {
+      "id": "temperature->kinetic_current",
+      "source": "temperature",
+      "target": "kinetic_current"
+    },
+    {
+      "id": "exchange_current_density->kinetic_current",
+      "source": "exchange_current_density",
+      "target": "kinetic_current"
+    },
+    {
+      "id": "charge_transfer_coefficient->kinetic_current",
+      "source": "charge_transfer_coefficient",
+      "target": "kinetic_current"
+    },
+    {
+      "id": "n_electrons->kinetic_current",
+      "source": "n_electrons",
+      "target": "kinetic_current"
+    },
+    {
+      "id": "rotation_rate->limiting_current_density",
+      "source": "rotation_rate",
+      "target": "limiting_current_density"
+    },
+    {
+      "id": "electrode_thickness->limiting_current_density",
+      "source": "electrode_thickness",
+      "target": "limiting_current_density"
+    },
+    {
+      "id": "n_electrons->limiting_current_density",
+      "source": "n_electrons",
+      "target": "limiting_current_density"
+    },
+    {
+      "id": "o2_diffusivity_in_electrolyte->limiting_current_density",
+      "source": "o2_diffusivity_in_electrolyte",
+      "target": "limiting_current_density"
+    },
+    {
+      "id": "o2_diffusivity_in_electrode->limiting_current_density",
+      "source": "o2_diffusivity_in_electrode",
+      "target": "limiting_current_density"
+    },
+    {
+      "id": "electrolyte_kinematic_viscosity->limiting_current_density",
+      "source": "electrolyte_kinematic_viscosity",
+      "target": "limiting_current_density"
+    },
+    {
+      "id": "bulk_o2_concentration->limiting_current_density",
+      "source": "bulk_o2_concentration",
+      "target": "limiting_current_density"
+    },
+    {
+      "id": "kinetic_current->total_current_density",
+      "source": "kinetic_current",
+      "target": "total_current_density"
+    },
+    {
+      "id": "limiting_current_density->total_current_density",
+      "source": "limiting_current_density",
+      "target": "total_current_density"
+    }
+  ],
+  "experimentalContext": "A minimal structural causal model for an rotating disk electrode for the\n    oxidation reduction reaction."
+}
