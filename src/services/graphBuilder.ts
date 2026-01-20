@@ -750,7 +750,7 @@ export async function parseExcelColumns(file: File): Promise<string[]> {
   const firstRow = worksheet.getRow(1);
   const columns: string[] = [];
 
-  firstRow.eachCell((cell, colNumber) => {
+  firstRow.eachCell((cell, _colNumber) => {
     const value = cell.value;
     if (value !== null && value !== undefined) {
       // Handle different cell value types

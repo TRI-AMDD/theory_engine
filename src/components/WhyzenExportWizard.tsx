@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import type { CausalGraph, CausalNode, WhyzenMetadata } from '../types';
+import type { CausalGraph, WhyzenMetadata } from '../types';
 import { generateWhyzenMetadata } from '../services/api';
 
 interface WhyzenExportWizardProps {
