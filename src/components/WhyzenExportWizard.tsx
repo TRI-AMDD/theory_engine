@@ -172,22 +172,41 @@ export const WhyzenExportWizard: React.FC<WhyzenExportWizardProps> = ({
     return { completeCount: complete, incompleteCount: incomplete };
   }, [validationResults]);
 
-  // Generate AI suggestions for all nodes
+  // Generate AI suggestions only for incomplete nodes
   const handleGenerateAll = async () => {
+    // Find nodes that are incomplete
+    const incompleteNodeIds = new Set(
+      nodeStates
+        .filter(state => !validateNodeMetadata(state, rootNodeIds.has(state.nodeId)).isComplete)
+        .map(state => state.nodeId)
+    );
+
+    if (incompleteNodeIds.size === 0) {
+      setError('All nodes are already complete!');
+      return;
+    }
+
     setIsGenerating(true);
     setError(null);
 
     try {
       const hasParent = new Set(graph.edges.map(e => e.target));
 
+      // Only pass incomplete nodes to the API
+      const incompleteNodes = graph.nodes.filter(n => incompleteNodeIds.has(n.id));
+
       const suggestions = await generateWhyzenMetadata(
         graph.experimentalContext,
-        graph.nodes,
+        incompleteNodes,
         graph.edges,
         hasParent
       );
 
       setNodeStates(prev => prev.map(state => {
+        // Only update if this node was incomplete
+        if (!incompleteNodeIds.has(state.nodeId)) {
+          return state;
+        }
         const suggestion = suggestions.find(s => s.nodeId === state.nodeId);
         if (suggestion) {
           return {
@@ -347,7 +366,7 @@ export const WhyzenExportWizard: React.FC<WhyzenExportWizardProps> = ({
           </div>
           <button
             onClick={handleGenerateAll}
-            disabled={isGenerating}
+            disabled={isGenerating || incompleteCount === 0}
             className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isGenerating && (
@@ -356,7 +375,7 @@ export const WhyzenExportWizard: React.FC<WhyzenExportWizardProps> = ({
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
             )}
-            {isGenerating ? 'Generating...' : 'AI Suggest All'}
+            {isGenerating ? 'Generating...' : incompleteCount > 0 ? `AI Fill ${incompleteCount} Incomplete` : 'All Complete'}
           </button>
         </div>
 
