@@ -46,6 +46,7 @@ export interface Proposal {
   direction: "upstream" | "downstream";  // Whether this is a cause or effect
   likelihood?: "high" | "medium" | "low";  // Critic assessment
   criticReason?: string;     // Why the critic rated it this way
+  count?: number;            // How many times this was proposed (for consolidation confidence)
 }
 
 // A proposal to connect an existing node

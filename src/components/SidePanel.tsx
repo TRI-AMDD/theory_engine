@@ -1,7 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { CausalNode, CausalGraph, ProposalConfig, ExistingNodeProposal } from '../types';
 import type { NodeWithDegree } from '../utils/graph';
 import { wouldCreateCycle } from '../utils/graph';
+import { generatePedagogicalExplanation, type PedagogicalExplanation } from '../services/api';
+import { ExplanationModal } from './ProposalList';
 
 interface SidePanelProps {
   selectedNode: CausalNode | null;
@@ -150,6 +152,50 @@ export const SidePanel: React.FC<SidePanelProps> = ({
   const [numCycles, setNumCycles] = useState(2);
   const [numProposalsPerCycle, setNumProposalsPerCycle] = useState(4);
 
+  // Ref for auto-scroll to proposals
+  const proposalsRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to proposals when generation starts
+  useEffect(() => {
+    if (isGenerating && proposalsRef.current) {
+      proposalsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [isGenerating]);
+
+  // Explanation modal state
+  const [explainNode, setExplainNode] = useState<CausalNode | null>(null);
+  const [explanation, setExplanation] = useState<PedagogicalExplanation | null>(null);
+  const [isLoadingExplanation, setIsLoadingExplanation] = useState(false);
+  const [explanationError, setExplanationError] = useState<string | null>(null);
+
+  // Handle explain click for any node
+  const handleExplainNode = async (node: CausalNode) => {
+    setExplainNode(node);
+    setExplanation(null);
+    setExplanationError(null);
+    setIsLoadingExplanation(true);
+
+    try {
+      const result = await generatePedagogicalExplanation(
+        graph.experimentalContext,
+        node.displayName,
+        node.description,
+        graph.nodes
+      );
+      setExplanation(result);
+    } catch (err) {
+      setExplanationError(err instanceof Error ? err.message : 'Failed to generate explanation');
+    } finally {
+      setIsLoadingExplanation(false);
+    }
+  };
+
+  const handleCloseExplanation = () => {
+    setExplainNode(null);
+    setExplanation(null);
+    setExplanationError(null);
+  };
+
   // Categorize nodes by their relationship to selected node
   const categorizedNodes = useMemo(() => {
     if (!selectedNode) return { forParent: [], forChild: [] };
@@ -254,8 +300,8 @@ export const SidePanel: React.FC<SidePanelProps> = ({
   return (
     <div className="w-96 bg-white border-l border-gray-200 flex flex-col h-full overflow-hidden">
       {/* Selected Node Details */}
-      <div className="p-6 border-b border-gray-200 bg-gray-50">
-        <h2 className="text-lg font-semibold text-gray-900 mb-1">
+      <div className="p-6 border-b border-gray-200 bg-gray-50 relative">
+        <h2 className="text-lg font-semibold text-gray-900 mb-1 pr-8">
           {selectedNode.displayName}
         </h2>
         <p className="text-sm text-gray-500 font-mono mb-3">
@@ -264,6 +310,17 @@ export const SidePanel: React.FC<SidePanelProps> = ({
         <p className="text-sm text-gray-700 leading-relaxed">
           {selectedNode.description}
         </p>
+
+        {/* Magnifying glass for selected node */}
+        <button
+          onClick={() => handleExplainNode(selectedNode)}
+          className="absolute top-4 right-4 p-1.5 text-gray-400 opacity-40 hover:opacity-100 hover:text-gray-600 transition-opacity"
+          title="Learn more about this variable"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </button>
 
         {/* Whyzen Metadata (if present) */}
         {selectedNode._whyzen && (
@@ -317,7 +374,18 @@ export const SidePanel: React.FC<SidePanelProps> = ({
 
       {/* Config Controls */}
       <div className="px-6 py-3 border-b border-gray-200 bg-blue-50">
-        <div className="flex items-center gap-4 text-sm">
+        <div className="flex items-center justify-between text-sm">
+          <label className="flex items-center gap-2">
+            <span className="text-gray-600">Proposal agents:</span>
+            <input
+              type="number"
+              min={1}
+              max={8}
+              value={numProposalsPerCycle}
+              onChange={(e) => setNumProposalsPerCycle(Math.max(1, Math.min(8, parseInt(e.target.value) || 1)))}
+              className="w-14 px-2 py-1 border border-gray-300 rounded text-center"
+            />
+          </label>
           <label className="flex items-center gap-2">
             <span className="text-gray-600">Cycles:</span>
             <input
@@ -326,17 +394,6 @@ export const SidePanel: React.FC<SidePanelProps> = ({
               max={5}
               value={numCycles}
               onChange={(e) => setNumCycles(Math.max(1, Math.min(5, parseInt(e.target.value) || 1)))}
-              className="w-14 px-2 py-1 border border-gray-300 rounded text-center"
-            />
-          </label>
-          <label className="flex items-center gap-2">
-            <span className="text-gray-600">Per cycle:</span>
-            <input
-              type="number"
-              min={1}
-              max={8}
-              value={numProposalsPerCycle}
-              onChange={(e) => setNumProposalsPerCycle(Math.max(1, Math.min(8, parseInt(e.target.value) || 1)))}
               className="w-14 px-2 py-1 border border-gray-300 rounded text-center"
             />
           </label>
@@ -612,11 +669,23 @@ export const SidePanel: React.FC<SidePanelProps> = ({
 
         {/* New Node Proposals (children slot) */}
         {children && (
-          <div className="p-6 border-t border-gray-200">
+          <div ref={proposalsRef} className="p-6 border-t border-gray-200">
             {children}
           </div>
         )}
       </div>
+
+      {/* Explanation Modal */}
+      {explainNode && (
+        <ExplanationModal
+          title={explainNode.displayName}
+          explanation={explanation}
+          isLoading={isLoadingExplanation}
+          error={explanationError}
+          onClose={handleCloseExplanation}
+          nodeNames={graph.nodes.map(n => n.displayName)}
+        />
+      )}
     </div>
   );
 };

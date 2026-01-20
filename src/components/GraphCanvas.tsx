@@ -19,6 +19,9 @@ import type { NodeWithDegree } from '../utils/graph';
 interface GraphCanvasProps {
   graph: CausalGraph;
   selectedNodeId: string | null;
+  selectedNodeIds?: Set<string>;  // For multi-select in consolidation mode
+  consolidationMode?: boolean;
+  expandMode?: boolean;
   onNodeSelect: (nodeId: string) => void;
   onNodePositionsChange?: (positions: Record<string, { x: number; y: number }>) => void;
   immediateDownstream?: CausalNode[];
@@ -57,10 +60,37 @@ function getNodeStyle(
   immediateUpstream: Set<string>,
   secondDegreeUpstream: Set<string>,
   immediateDownstream: Set<string>,
-  higherDownstream: Set<string>
+  higherDownstream: Set<string>,
+  consolidationMode?: boolean,
+  selectedNodeIds?: Set<string>,
+  expandMode?: boolean
 ): React.CSSProperties {
-  if (nodeId === selectedNodeId) {
-    // Selected node: yellow/amber background
+  // In consolidation mode, show purple for multi-selected nodes
+  if (consolidationMode && selectedNodeIds?.has(nodeId)) {
+    return {
+      backgroundColor: '#9333ea',
+      border: '3px solid #7c3aed',
+      borderRadius: '8px',
+      padding: '10px 15px',
+      color: 'white',
+      boxShadow: '0 0 0 3px rgba(147, 51, 234, 0.3)',
+    };
+  }
+
+  // In expand mode, show yellow for selected node
+  if (expandMode && nodeId === selectedNodeId) {
+    return {
+      backgroundColor: '#eab308',
+      border: '3px solid #ca8a04',
+      borderRadius: '8px',
+      padding: '10px 15px',
+      color: 'white',
+      boxShadow: '0 0 0 3px rgba(234, 179, 8, 0.3)',
+    };
+  }
+
+  if (nodeId === selectedNodeId && !consolidationMode && !expandMode) {
+    // Selected node: yellow/amber background (only in normal mode)
     return {
       backgroundColor: '#fbbf24',
       border: '2px solid #d97706',
@@ -147,7 +177,7 @@ function getLayoutedElements(nodes: Node[], edges: Edge[], direction = 'TB') {
   return { nodes: layoutedNodes, edges };
 }
 
-function GraphCanvasInner({ graph, selectedNodeId, onNodeSelect, onNodePositionsChange, immediateDownstream: immediateDownstreamProp, higherDownstream: higherDownstreamProp }: GraphCanvasProps) {
+function GraphCanvasInner({ graph, selectedNodeId, selectedNodeIds, consolidationMode, expandMode, onNodeSelect, onNodePositionsChange, immediateDownstream: immediateDownstreamProp, higherDownstream: higherDownstreamProp }: GraphCanvasProps) {
   const [hasInitialLayout, setHasInitialLayout] = useState(false);
 
   // Track graph identity to detect preset changes
@@ -194,10 +224,10 @@ function GraphCanvasInner({ graph, selectedNodeId, onNodeSelect, onNodePositions
       data: {
         label: node.displayName,
       },
-      style: getNodeStyle(node.id, selectedNodeId, immediateUpstream, secondDegreeUpstream, immediateDownstream, higherDownstream),
-      selected: node.id === selectedNodeId,
+      style: getNodeStyle(node.id, selectedNodeId, immediateUpstream, secondDegreeUpstream, immediateDownstream, higherDownstream, consolidationMode, selectedNodeIds, expandMode),
+      selected: consolidationMode ? selectedNodeIds?.has(node.id) : node.id === selectedNodeId,
     }));
-  }, [graph.nodes, selectedNodeId, immediateUpstream, secondDegreeUpstream, immediateDownstream, higherDownstream]);
+  }, [graph.nodes, selectedNodeId, immediateUpstream, secondDegreeUpstream, immediateDownstream, higherDownstream, consolidationMode, selectedNodeIds, expandMode]);
 
   // Convert CausalGraph edges to react-flow format with arrows
   const initialEdges: Edge[] = useMemo(() => {
