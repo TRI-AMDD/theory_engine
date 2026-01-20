@@ -25,7 +25,10 @@ import {
   type ExpansionProposal,
   subscribeToTokenUpdates,
   getSessionTokenUsage,
-  resetSessionTokenUsage
+  resetSessionTokenUsage,
+  isApiConfigured,
+  setApiConfig,
+  getApiConfig
 } from './services/api';
 import { GraphCanvas } from './components/GraphCanvas';
 import { SidePanel } from './components/SidePanel';
@@ -67,6 +70,10 @@ function App() {
 
   // New Graph confirmation state
   const [confirmNewGraph, setConfirmNewGraph] = useState(false);
+
+  // API config state
+  const [showApiConfig, setShowApiConfig] = useState(false);
+  const [apiConfigured, setApiConfigured] = useState(isApiConfigured());
 
   // Consolidation mode state
   const [consolidationMode, setConsolidationMode] = useState(false);
@@ -762,8 +769,24 @@ function App() {
           </span>
         </div>
 
-        {/* Token Usage Display */}
+        {/* Token Usage Display & API Config */}
         <div className="flex items-center gap-3">
+          {/* API Key Config Button */}
+          <button
+            onClick={() => setShowApiConfig(true)}
+            className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium ${
+              apiConfigured
+                ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30'
+                : 'bg-red-600/30 text-red-300 hover:bg-red-600/40 animate-pulse'
+            }`}
+            title={apiConfigured ? 'API configured' : 'API key required'}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+            </svg>
+            {apiConfigured ? 'API' : 'Set API Key'}
+          </button>
+
           <div className="flex items-center gap-2 text-xs">
             <span className="text-slate-400">Tokens:</span>
             <span className="font-mono bg-slate-700 px-2 py-0.5 rounded">
@@ -1209,6 +1232,111 @@ function App() {
         onClose={() => setShowWhyzenExport(false)}
         graph={graph}
       />
+
+      {/* API Config Modal */}
+      {showApiConfig && (
+        <ApiConfigModal
+          onClose={() => setShowApiConfig(false)}
+          onSave={() => {
+            setApiConfigured(isApiConfigured());
+            setShowApiConfig(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// API Config Modal Component
+function ApiConfigModal({ onClose, onSave }: { onClose: () => void; onSave: () => void }) {
+  const currentConfig = getApiConfig();
+  const [endpoint, setEndpoint] = useState(currentConfig.endpoint);
+  const [apiKey, setApiKey] = useState('');
+  const [deployment, setDeployment] = useState(currentConfig.deploymentName);
+
+  const handleSave = () => {
+    if (endpoint && apiKey) {
+      setApiConfig({
+        endpoint,
+        apiKey,
+        deploymentName: deployment || 'gpt-4o'
+      });
+      onSave();
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
+      <div
+        className="bg-white rounded-lg shadow-xl w-full max-w-md m-4"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900">Azure OpenAI Configuration</h2>
+          <p className="text-sm text-gray-500 mt-1">Enter your Azure OpenAI credentials to enable AI features</p>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Endpoint URL <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="url"
+              value={endpoint}
+              onChange={e => setEndpoint(e.target.value)}
+              placeholder="https://your-resource.openai.azure.com"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              API Key <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="password"
+              value={apiKey}
+              onChange={e => setApiKey(e.target.value)}
+              placeholder="Enter your API key"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {currentConfig.apiKey && (
+              <p className="text-xs text-gray-500 mt-1">Current key: {currentConfig.apiKey}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Deployment Name
+            </label>
+            <input
+              type="text"
+              value={deployment}
+              onChange={e => setDeployment(e.target.value)}
+              placeholder="gpt-4o"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="text-xs text-gray-500 mt-1">Default: gpt-4o</p>
+          </div>
+        </div>
+
+        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-3 rounded-b-lg">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-gray-700 text-sm font-medium hover:text-gray-900"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={!endpoint || !apiKey}
+            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Save
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

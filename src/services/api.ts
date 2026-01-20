@@ -47,22 +47,79 @@ function addTokenUsage(usage: { prompt_tokens?: number; completion_tokens?: numb
   tokenUpdateCallbacks.forEach(cb => cb({ ...sessionTokenUsage }));
 }
 
-// Azure OpenAI configuration
-const endpoint = import.meta.env.VITE_AZURE_OPENAI_ENDPOINT;
-const apiKey = import.meta.env.VITE_AZURE_OPENAI_API_KEY;
-const deploymentName = import.meta.env.VITE_AZURE_OPENAI_DEPLOYMENT || 'gpt-4o';
+// Azure OpenAI configuration - supports both env vars and runtime config
+let endpoint = import.meta.env.VITE_AZURE_OPENAI_ENDPOINT || '';
+let apiKey = import.meta.env.VITE_AZURE_OPENAI_API_KEY || '';
+let deploymentName = import.meta.env.VITE_AZURE_OPENAI_DEPLOYMENT || 'gpt-4o';
+
+// Check localStorage for saved config
+const savedConfig = localStorage.getItem('causeway-api-config');
+if (savedConfig) {
+  try {
+    const config = JSON.parse(savedConfig);
+    if (config.endpoint) endpoint = config.endpoint;
+    if (config.apiKey) apiKey = config.apiKey;
+    if (config.deploymentName) deploymentName = config.deploymentName;
+  } catch {
+    // Invalid saved config, ignore
+  }
+}
 
 // Validate configuration
 if (!endpoint || !apiKey) {
-  console.warn('Azure OpenAI not configured. Set VITE_AZURE_OPENAI_ENDPOINT and VITE_AZURE_OPENAI_API_KEY in .env');
+  console.warn('Azure OpenAI not configured. Use the API Key button or set VITE_AZURE_OPENAI_ENDPOINT and VITE_AZURE_OPENAI_API_KEY in .env');
 }
 
-const client = new AzureOpenAI({
+let client = new AzureOpenAI({
   endpoint: endpoint || 'https://placeholder.openai.azure.com',
   apiKey: apiKey || 'missing-key',
   apiVersion: '2024-08-01-preview',
   dangerouslyAllowBrowser: true
 });
+
+// API configuration functions
+export function isApiConfigured(): boolean {
+  return !!(endpoint && apiKey);
+}
+
+export function getApiConfig(): { endpoint: string; apiKey: string; deploymentName: string } {
+  return { endpoint, apiKey: apiKey ? '••••••••' : '', deploymentName };
+}
+
+export function setApiConfig(config: { endpoint: string; apiKey: string; deploymentName?: string }): void {
+  endpoint = config.endpoint;
+  apiKey = config.apiKey;
+  if (config.deploymentName) deploymentName = config.deploymentName;
+
+  // Save to localStorage
+  localStorage.setItem('causeway-api-config', JSON.stringify({
+    endpoint,
+    apiKey,
+    deploymentName
+  }));
+
+  // Recreate client with new config
+  client = new AzureOpenAI({
+    endpoint: endpoint || 'https://placeholder.openai.azure.com',
+    apiKey: apiKey || 'missing-key',
+    apiVersion: '2024-08-01-preview',
+    dangerouslyAllowBrowser: true
+  });
+}
+
+export function clearApiConfig(): void {
+  endpoint = import.meta.env.VITE_AZURE_OPENAI_ENDPOINT || '';
+  apiKey = import.meta.env.VITE_AZURE_OPENAI_API_KEY || '';
+  deploymentName = import.meta.env.VITE_AZURE_OPENAI_DEPLOYMENT || 'gpt-4o';
+  localStorage.removeItem('causeway-api-config');
+
+  client = new AzureOpenAI({
+    endpoint: endpoint || 'https://placeholder.openai.azure.com',
+    apiKey: apiKey || 'missing-key',
+    apiVersion: '2024-08-01-preview',
+    dangerouslyAllowBrowser: true
+  });
+}
 
 /**
  * Validate that the parsed JSON has the expected shape (Pearl terminology)
