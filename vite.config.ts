@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: '/causeway/',
   plugins: [react(), tailwindcss()],
   define: {
     // Map shell environment variables to VITE_ variables
