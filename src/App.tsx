@@ -61,6 +61,10 @@ function App() {
   // Add Node modal state
   const [showAddNode, setShowAddNode] = useState(false);
 
+  // Auto-save recovery state
+  const [showRecoveryPrompt, setShowRecoveryPrompt] = useState(false);
+  const [recoveryData, setRecoveryData] = useState<{ graph: CausalGraph; timestamp: number } | null>(null);
+
   // New Graph confirmation state
   const [confirmNewGraph, setConfirmNewGraph] = useState(false);
 
@@ -81,6 +85,56 @@ function App() {
   useEffect(() => {
     const unsubscribe = subscribeToTokenUpdates(setTokenUsage);
     return unsubscribe;
+  }, []);
+
+  // Auto-save to localStorage every 30 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (graph.nodes.length > 0) {
+        localStorage.setItem('causeway-autosave', JSON.stringify({
+          graph,
+          timestamp: Date.now()
+        }));
+      }
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [graph]);
+
+  // Check for recovery data on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('causeway-autosave');
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        const age = Date.now() - data.timestamp;
+        // Only offer recovery if less than 24 hours old and has nodes
+        if (age < 24 * 60 * 60 * 1000 && data.graph?.nodes?.length > 0) {
+          setRecoveryData(data);
+          setShowRecoveryPrompt(true);
+        }
+      } catch {
+        // Invalid data, ignore
+        localStorage.removeItem('causeway-autosave');
+      }
+    }
+  }, []);
+
+  // Handle recovery
+  const handleRecoverGraph = useCallback(() => {
+    if (recoveryData) {
+      setGraph(recoveryData.graph);
+      setSelectedNodeId(null);
+      setProposals([]);
+      setExistingNodeProposals([]);
+    }
+    setShowRecoveryPrompt(false);
+    setRecoveryData(null);
+  }, [recoveryData]);
+
+  const handleDismissRecovery = useCallback(() => {
+    setShowRecoveryPrompt(false);
+    setRecoveryData(null);
+    localStorage.removeItem('causeway-autosave');
   }, []);
 
   // Derived state: selected node and its upstream relationships
@@ -662,6 +716,34 @@ function App() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-100">
+      {/* Recovery Prompt */}
+      {showRecoveryPrompt && recoveryData && (
+        <div className="bg-blue-600 text-white px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-sm">
+              Found auto-saved graph from {new Date(recoveryData.timestamp).toLocaleString()} ({recoveryData.graph.nodes.length} nodes)
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleRecoverGraph}
+              className="px-3 py-1 bg-white text-blue-600 text-sm font-medium rounded hover:bg-blue-50"
+            >
+              Restore
+            </button>
+            <button
+              onClick={handleDismissRecovery}
+              className="px-3 py-1 bg-blue-500 text-white text-sm font-medium rounded hover:bg-blue-400"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* App Title */}
       <div className="bg-slate-800 text-white px-4 py-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
