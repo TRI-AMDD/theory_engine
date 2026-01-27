@@ -1004,7 +1004,7 @@ function App() {
             higherDownstream={higherDownstream}
           />
           {/* Top-right controls */}
-          <div className="absolute top-4 right-4 flex items-center gap-2">
+          <div className="absolute top-4 right-4 flex flex-wrap items-center gap-2 max-w-md justify-end">
             {/* New Graph button */}
             <button
               onClick={handleNewGraph}
@@ -1328,6 +1328,7 @@ function App() {
         </div>
 
         {/* Side Panel */}
+        {selectedNode && (
         <SidePanel
           selectedNode={selectedNode}
           graph={graph}
@@ -1343,6 +1344,7 @@ function App() {
           onGenerateProposals={handleGenerateProposals}
           onEvaluateExisting={handleEvaluateExisting}
           onDeleteNode={handleDeleteNode}
+          onClose={() => setSelectedNodeId(null)}
           isGenerating={isGenerating}
           generatingDirection={generatingDirection}
           existingNodeProposals={existingNodeProposals}
@@ -1355,6 +1357,7 @@ function App() {
             allNodes={graph.nodes}
           />
         </SidePanel>
+        )}
         </div>
       </div>
 

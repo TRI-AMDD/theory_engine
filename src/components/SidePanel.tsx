@@ -23,6 +23,7 @@ interface SidePanelProps {
   onGenerateProposals: (direction: 'upstream' | 'downstream', config: ProposalConfig) => void;
   onEvaluateExisting: (direction: 'upstream' | 'downstream') => void;
   onDeleteNode: (nodeId: string) => void;
+  onClose: () => void;
   // State
   isGenerating: boolean;
   generatingDirection: 'upstream' | 'downstream' | null;
@@ -145,6 +146,7 @@ export const SidePanel: React.FC<SidePanelProps> = ({
   onGenerateProposals,
   onEvaluateExisting,
   onDeleteNode,
+  onClose,
   isGenerating,
   generatingDirection,
   existingNodeProposals,
@@ -329,6 +331,15 @@ export const SidePanel: React.FC<SidePanelProps> = ({
             className="px-3 py-1 text-xs text-red-600 border border-red-200 rounded hover:bg-red-50"
           >
             Delete Node
+          </button>
+          <button
+            onClick={onClose}
+            className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors"
+            title="Close panel"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
 
