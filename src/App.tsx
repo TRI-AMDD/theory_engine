@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import type { CausalGraph, CausalNode, Proposal, ExistingNodeProposal, ProposalConfig, NodeClassification, Hypothesis, ActionSpace, ConsolidatedActionSet } from './types';
+import type { CausalGraph, CausalNode, Proposal, ExistingNodeProposal, ProposalConfig, NodeClassification, Hypothesis, ActionSpace, ConsolidatedActionSet, VisualizationMode } from './types';
 import { initialGraph, experimentPresets } from './data/initialData';
 import {
   getNode,
@@ -34,6 +34,7 @@ import {
   getApiConfig
 } from './services/api';
 import { GraphCanvas } from './components/GraphCanvas';
+import { ActionSpaceCanvas } from './components/ActionSpaceCanvas';
 import { SidePanel } from './components/SidePanel';
 import { ProposalList } from './components/ProposalList';
 import { ContextHeader } from './components/ContextHeader';
@@ -79,6 +80,10 @@ function App() {
   const [isGeneratingHypothesis, setIsGeneratingHypothesis] = useState(false);
   const [generationProgress, setGenerationProgress] = useState<{current: number; total: number} | null>(null);
   const [consolidatedActionSet, setConsolidatedActionSet] = useState<ConsolidatedActionSet | null>(null);
+
+  // Visualization mode state
+  const [visualizationMode, setVisualizationMode] = useState<VisualizationMode>('causal');
+  const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
 
   // New Graph confirmation state
   const [confirmNewGraph, setConfirmNewGraph] = useState(false);
@@ -799,13 +804,15 @@ function App() {
       ...prevGraph,
       nodes: prevGraph.nodes.map(node => {
         if (node.id !== nodeId) return node;
-        if (classification === null && isDesirable !== undefined) {
-          return { ...node, isDesirable };
-        }
         if (classification === 'intervenable') {
           return { ...node, classification, isDesirable: false };
         }
-        return { ...node, classification, isDesirable: isDesirable ?? node.isDesirable };
+        // For null, observable, or desirable - update both fields
+        return {
+          ...node,
+          classification,
+          isDesirable: isDesirable ?? node.isDesirable
+        };
       }),
     }));
 
@@ -828,20 +835,20 @@ function App() {
     setGenerationProgress({ current: 0, total: count });
 
     try {
-      const newHypotheses = await generateMultipleHypotheses(
+      await generateMultipleHypotheses(
         intervenables,
         observables,
         desirables,
         actionSpace,
         graph,
         { count, diversityHint: hint || undefined },
-        (completed, total) => setGenerationProgress({ current: completed, total })
+        (completed, total) => setGenerationProgress({ current: completed, total }),
+        // Add each hypothesis immediately as it's generated
+        (hypothesis) => {
+          setHypotheses(prev => [hypothesis, ...prev]);
+          setActiveHypothesisId(hypothesis.id);
+        }
       );
-
-      setHypotheses(prev => [...newHypotheses, ...prev]);
-      if (newHypotheses.length > 0) {
-        setActiveHypothesisId(newHypotheses[0].id);
-      }
     } catch (error) {
       console.error('Failed to generate hypotheses:', error);
       alert('Failed to generate hypotheses. Please try again.');
@@ -1082,20 +1089,59 @@ function App() {
         <div className="w-3/5 h-full flex flex-col">
           {/* Graph Canvas */}
           <div className="flex-1 relative">
-          <GraphCanvas
-            graph={graph}
-            selectedNodeId={selectedNodeId}
-            selectedNodeIds={consolidationMode ? selectedNodeIds : undefined}
-            consolidationMode={consolidationMode}
-            expandMode={expandMode}
-            onNodeSelect={handleNodeSelect}
-            onNodePositionsChange={handleNodePositionsChange}
-            immediateDownstream={immediateDownstream}
-            higherDownstream={higherDownstream}
-            hypothesisHighlightedNodeIds={activeHypothesisNodeIds}
-          />
+          {visualizationMode === 'causal' ? (
+            <GraphCanvas
+              graph={graph}
+              selectedNodeId={selectedNodeId}
+              selectedNodeIds={consolidationMode ? selectedNodeIds : undefined}
+              consolidationMode={consolidationMode}
+              expandMode={expandMode}
+              onNodeSelect={handleNodeSelect}
+              onNodePositionsChange={handleNodePositionsChange}
+              immediateDownstream={immediateDownstream}
+              higherDownstream={higherDownstream}
+              hypothesisHighlightedNodeIds={activeHypothesisNodeIds}
+            />
+          ) : (
+            consolidatedActionSet && (
+              <ActionSpaceCanvas
+                hypotheses={hypotheses.filter(h => h.status === 'active')}
+                consolidatedActions={consolidatedActionSet.actions}
+                selectedHypothesisId={activeHypothesisId}
+                selectedActionId={selectedActionId}
+                onHypothesisSelect={setActiveHypothesisId}
+                onActionSelect={setSelectedActionId}
+              />
+            )
+          )}
           {/* Top-right controls */}
           <div className="absolute top-4 right-4 flex flex-wrap items-center gap-2 max-w-md justify-end">
+            {/* Visualization Mode Toggle */}
+            <div className="flex bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <button
+                onClick={() => setVisualizationMode('causal')}
+                className={`px-3 py-1.5 text-sm font-medium ${
+                  visualizationMode === 'causal'
+                    ? 'bg-slate-700 text-white'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                Causal Graph
+              </button>
+              <button
+                onClick={() => setVisualizationMode('action-space')}
+                disabled={!consolidatedActionSet}
+                className={`px-3 py-1.5 text-sm font-medium ${
+                  visualizationMode === 'action-space'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed'
+                }`}
+                title={!consolidatedActionSet ? 'Consolidate actions first' : 'View action space'}
+              >
+                Action Space
+              </button>
+            </div>
+
             {/* New Graph button */}
             <button
               onClick={handleNewGraph}

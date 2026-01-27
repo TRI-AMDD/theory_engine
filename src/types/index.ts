@@ -195,3 +195,38 @@ export interface ConsolidatedActionSet {
   sourceHypothesisIds: string[];
   conditioningText?: string;
 }
+
+// ============================================
+// Action Space Visualization Types
+// ============================================
+
+// Visualization modes
+export type VisualizationMode = 'causal' | 'action-space';
+
+// Node types for action space graph
+export interface ActionSpaceNode {
+  id: string;
+  type: 'hypothesis' | 'action';
+  data: {
+    // For hypothesis nodes
+    hypothesis?: Hypothesis;
+    // For action nodes
+    action?: ConsolidatedAction;
+    // Common
+    label: string;
+    isHighlighted?: boolean;
+  };
+  position: { x: number; y: number };
+}
+
+export interface ActionSpaceEdge {
+  id: string;
+  source: string;  // hypothesis node ID
+  target: string;  // action node ID
+  animated?: boolean;
+}
+
+export interface ActionSpaceGraph {
+  nodes: ActionSpaceNode[];
+  edges: ActionSpaceEdge[];
+}
