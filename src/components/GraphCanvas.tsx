@@ -402,6 +402,8 @@ function GraphCanvasInner({ graph, selectedNodeId, selectedNodeIds, consolidatio
         onNodeClick={onNodeClick}
         fitView
         fitViewOptions={{ padding: 0.2 }}
+        minZoom={0.05}
+        maxZoom={2}
         attributionPosition="bottom-left"
       >
         <Background color="#e5e7eb" gap={16} />

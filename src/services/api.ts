@@ -1663,6 +1663,7 @@ export interface HypothesisGenerationInput {
   observables: CausalNode[];
   desirables: CausalNode[];
   actionSpace: ActionSpace;
+  conditioningHint?: string;
 }
 
 export interface GeneratedHypothesis {
@@ -1763,7 +1764,12 @@ AVAILABLE VALIDATION ACTIONS:
 ${input.actionSpace.actions.map(a =>
   `- ${a.name} (${a.type}): ${a.description}\n  Parameters: ${a.parameterHints?.join(', ') || 'None'}`
 ).join('\n')}
+${input.conditioningHint ? `
+USER GUIDANCE:
+${input.conditioningHint}
 
+Please take the above guidance into account when generating the hypothesis.
+` : ''}
 Generate a hypothesis with:
 1. PRESCRIPTION: Specific modifications to the intervenable variables
 2. OBSERVABLE_PREDICTIONS: What changes will be observed

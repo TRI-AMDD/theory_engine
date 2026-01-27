@@ -15,6 +15,7 @@ export function HypothesisGenerator({
 }: HypothesisGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [conditioningHint, setConditioningHint] = useState('');
 
   const intervenables = graph.nodes.filter(n => n.classification === 'intervenable');
   const observables = graph.nodes.filter(n => n.classification === 'observable');
@@ -36,6 +37,7 @@ export function HypothesisGenerator({
         observables,
         desirables,
         actionSpace,
+        conditioningHint: conditioningHint.trim() || undefined,
       });
 
       const hypothesis: Hypothesis = {
@@ -93,6 +95,21 @@ export function HypothesisGenerator({
               : 'None selected (optional)'}
           </span>
         </div>
+      </div>
+
+      {/* Conditioning hint */}
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">
+          Guidance <span className="text-gray-400">(optional)</span>
+        </label>
+        <textarea
+          value={conditioningHint}
+          onChange={e => setConditioningHint(e.target.value)}
+          placeholder="e.g., 'Focus on temperature effects' or 'Generate a hypothesis about catalyst performance' or 'What happens if we increase pressure?'"
+          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:border-blue-400 focus:ring-1 focus:ring-blue-400 focus:outline-none resize-none"
+          rows={2}
+          disabled={isGenerating}
+        />
       </div>
 
       {/* Action space check */}
