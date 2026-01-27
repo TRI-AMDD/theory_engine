@@ -7,12 +7,17 @@ export interface WhyzenMetadata {
   level: 'global' | 'experiment' | 'timepoint' | string;
 }
 
+// Node classification for hypothesis generation
+export type NodeClassification = 'intervenable' | 'observable' | 'desirable' | null;
+
 // Causal node representing a factor in the experiment
 export interface CausalNode {
   id: string;
   variableName: string;      // computer-readable, e.g., "rotation_rate"
   displayName: string;       // human-readable, e.g., "Rotation Rate"
   description: string;       // what this variable represents
+  classification?: NodeClassification;
+  isDesirable?: boolean;
   // Position for react-flow
   position?: { x: number; y: number };
   // Whyzen metadata (optional - present when imported from Whyzen)
@@ -93,4 +98,49 @@ export interface GraphBuildResult {
     completionTokens: number;
     totalTokens: number;
   };
+}
+
+// ============================================
+// Action Space Types
+// ============================================
+
+export interface ActionDefinition {
+  id: string;
+  name: string;
+  type: 'md_simulation' | 'experiment' | 'literature' | 'dataset' | 'custom';
+  description: string;
+  parameterHints?: string[];
+}
+
+export interface ActionSpace {
+  actions: ActionDefinition[];
+}
+
+// ============================================
+// Hypothesis Types
+// ============================================
+
+export interface HypothesisActionHook {
+  actionId: string;
+  actionName: string;
+  parameters: Record<string, string>;
+  instructions: string;
+}
+
+export interface Hypothesis {
+  id: string;
+  createdAt: string;
+  intervenables: string[];
+  observables: string[];
+  desirables: string[];
+  prescription: string;
+  predictions: {
+    observables: string;
+    desirables: string;
+  };
+  story: string;
+  actionHooks: HypothesisActionHook[];
+  critique: string;
+  status: 'active' | 'outdated';
+  outdatedReason?: string;
 }

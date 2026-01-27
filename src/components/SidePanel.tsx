@@ -22,6 +22,7 @@ interface SidePanelProps {
   onRemoveEdge: (sourceId: string, targetId: string) => void;
   onGenerateProposals: (direction: 'upstream' | 'downstream', config: ProposalConfig) => void;
   onEvaluateExisting: (direction: 'upstream' | 'downstream') => void;
+  onDeleteNode: (nodeId: string) => void;
   // State
   isGenerating: boolean;
   generatingDirection: 'upstream' | 'downstream' | null;
@@ -143,6 +144,7 @@ export const SidePanel: React.FC<SidePanelProps> = ({
   onRemoveEdge,
   onGenerateProposals,
   onEvaluateExisting,
+  onDeleteNode,
   isGenerating,
   generatingDirection,
   existingNodeProposals,
@@ -311,16 +313,24 @@ export const SidePanel: React.FC<SidePanelProps> = ({
           {selectedNode.description}
         </p>
 
-        {/* Magnifying glass for selected node */}
-        <button
-          onClick={() => handleExplainNode(selectedNode)}
-          className="absolute top-4 right-4 p-1.5 text-gray-400 opacity-40 hover:opacity-100 hover:text-gray-600 transition-opacity"
-          title="Learn more about this variable"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-        </button>
+        {/* Node action buttons */}
+        <div className="absolute top-4 right-4 flex items-center gap-2">
+          <button
+            onClick={() => handleExplainNode(selectedNode)}
+            className="p-1.5 text-gray-400 opacity-40 hover:opacity-100 hover:text-gray-600 transition-opacity"
+            title="Learn more about this variable"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </button>
+          <button
+            onClick={() => onDeleteNode(selectedNode.id)}
+            className="px-3 py-1 text-xs text-red-600 border border-red-200 rounded hover:bg-red-50"
+          >
+            Delete Node
+          </button>
+        </div>
 
         {/* Whyzen Metadata (if present) */}
         {selectedNode._whyzen && (

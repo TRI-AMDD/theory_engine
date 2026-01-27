@@ -1,5 +1,5 @@
 import { AzureOpenAI } from 'openai';
-import type { CausalNode, CausalEdge, Proposal, ExistingNodeProposal, ProposalConfig, WhyzenMetadata } from '../types';
+import type { CausalNode, CausalEdge, CausalGraph, ActionSpace, Proposal, ExistingNodeProposal, ProposalConfig, WhyzenMetadata } from '../types';
 
 // Token usage tracking
 export interface TokenUsage {
@@ -119,6 +119,106 @@ export function clearApiConfig(): void {
     apiVersion: '2024-08-01-preview',
     dangerouslyAllowBrowser: true
   });
+}
+
+// Ollama configuration
+export type LLMProvider = 'azure' | 'ollama';
+
+export interface OllamaConfig {
+  endpoint: string;  // e.g., http://localhost:11434
+  model: string;     // e.g., llama2, mistral
+}
+
+let ollamaConfig: OllamaConfig | null = null;
+
+export function setOllamaConfig(config: OllamaConfig | null) {
+  ollamaConfig = config;
+  if (config) {
+    localStorage.setItem('causeway-ollama-config', JSON.stringify(config));
+  } else {
+    localStorage.removeItem('causeway-ollama-config');
+  }
+}
+
+export function getOllamaConfig(): OllamaConfig | null {
+  return ollamaConfig;
+}
+
+export function getActiveProvider(): LLMProvider {
+  return ollamaConfig ? 'ollama' : 'azure';
+}
+
+// Load saved Ollama config
+const savedOllamaConfig = localStorage.getItem('causeway-ollama-config');
+if (savedOllamaConfig) {
+  try {
+    ollamaConfig = JSON.parse(savedOllamaConfig);
+  } catch {
+    // Invalid saved config, ignore
+  }
+}
+
+async function callOllama(prompt: string, systemPrompt?: string, temperature: number = 0.7): Promise<string> {
+  if (!ollamaConfig) throw new Error('Ollama not configured');
+
+  const messages = [];
+  if (systemPrompt) {
+    messages.push({ role: 'system', content: systemPrompt });
+  }
+  messages.push({ role: 'user', content: prompt });
+
+  const response = await fetch(`${ollamaConfig.endpoint}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: ollamaConfig.model,
+      messages,
+      stream: false,
+      options: { temperature },
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Ollama request failed: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.message?.content || '';
+}
+
+export async function callLLM(
+  prompt: string,
+  systemPrompt?: string,
+  temperature: number = 0.7,
+  maxTokens: number = 1024
+): Promise<string> {
+  if (ollamaConfig) {
+    return callOllama(prompt, systemPrompt, temperature);
+  }
+
+  if (!endpoint || !apiKey) {
+    throw new Error('Azure OpenAI not configured');
+  }
+
+  const messages: Array<{ role: 'system' | 'user'; content: string }> = [];
+  if (systemPrompt) {
+    messages.push({ role: 'system', content: systemPrompt });
+  }
+  messages.push({ role: 'user', content: prompt });
+
+  const response = await client.chat.completions.create({
+    model: deploymentName,
+    messages,
+    max_tokens: maxTokens,
+    temperature,
+  });
+
+  addTokenUsage(response.usage);
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) throw new Error('No content in API response');
+
+  return content;
 }
 
 /**
@@ -1550,4 +1650,231 @@ Respond with JSON only (no markdown):
   }
 
   return results;
+}
+
+// ============================================
+// Hypothesis Generation
+// ============================================
+
+export interface HypothesisGenerationInput {
+  experimentalContext: string;
+  graph: CausalGraph;
+  intervenables: CausalNode[];
+  observables: CausalNode[];
+  desirables: CausalNode[];
+  actionSpace: ActionSpace;
+}
+
+export interface GeneratedHypothesis {
+  prescription: string;
+  predictions: {
+    observables: string;
+    desirables: string;
+  };
+  story: string;
+  actionHooks: Array<{
+    actionId: string;
+    parameters: Record<string, string>;
+    instructions: string;
+  }>;
+  critique: string;
+}
+
+export async function generateHypothesis(
+  input: HypothesisGenerationInput
+): Promise<GeneratedHypothesis> {
+  if (!endpoint || !apiKey) {
+    throw new Error('Azure OpenAI not configured');
+  }
+
+  const nodeMap = new Map(input.graph.nodes.map(n => [n.id, n]));
+
+  const getAncestors = (nodeId: string): string[] => {
+    const ancestors: string[] = [];
+    const visited = new Set<string>();
+    const queue = input.graph.edges
+      .filter(e => e.target === nodeId)
+      .map(e => e.source);
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (visited.has(current)) continue;
+      visited.add(current);
+      ancestors.push(current);
+      input.graph.edges
+        .filter(e => e.target === current)
+        .forEach(e => queue.push(e.source));
+    }
+    return ancestors;
+  };
+
+  const getDescendants = (nodeId: string): string[] => {
+    const descendants: string[] = [];
+    const visited = new Set<string>();
+    const queue = input.graph.edges
+      .filter(e => e.source === nodeId)
+      .map(e => e.target);
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (visited.has(current)) continue;
+      visited.add(current);
+      descendants.push(current);
+      input.graph.edges
+        .filter(e => e.source === current)
+        .forEach(e => queue.push(e.target));
+    }
+    return descendants;
+  };
+
+  const prompt = `You are a scientific hypothesis generator. Given a causal graph and classified variables, generate a testable hypothesis.
+
+EXPERIMENTAL CONTEXT:
+${input.experimentalContext}
+
+CAUSAL GRAPH NODES:
+${input.graph.nodes.map(n => `- ${n.displayName}: ${n.description}`).join('\n')}
+
+CAUSAL RELATIONSHIPS:
+${input.graph.edges.map(e => {
+  const source = nodeMap.get(e.source);
+  const target = nodeMap.get(e.target);
+  return `- ${source?.displayName} → ${target?.displayName}`;
+}).join('\n')}
+
+INTERVENABLE VARIABLES (can be manipulated):
+${input.intervenables.map(n => {
+  const descendants = getDescendants(n.id).map(id => nodeMap.get(id)?.displayName).filter(Boolean);
+  return `- ${n.displayName}: ${n.description}\n  Downstream effects: ${descendants.join(', ') || 'None'}`;
+}).join('\n')}
+
+OBSERVABLE VARIABLES (can be measured):
+${input.observables.map(n => {
+  const ancestors = getAncestors(n.id).map(id => nodeMap.get(id)?.displayName).filter(Boolean);
+  return `- ${n.displayName}: ${n.description}\n  Upstream causes: ${ancestors.join(', ') || 'None'}`;
+}).join('\n')}
+
+DESIRABLE VARIABLES (goals):
+${input.desirables.length > 0
+  ? input.desirables.map(n => `- ${n.displayName}: ${n.description}`).join('\n')
+  : 'None specified'}
+
+AVAILABLE VALIDATION ACTIONS:
+${input.actionSpace.actions.map(a =>
+  `- ${a.name} (${a.type}): ${a.description}\n  Parameters: ${a.parameterHints?.join(', ') || 'None'}`
+).join('\n')}
+
+Generate a hypothesis with:
+1. PRESCRIPTION: Specific modifications to the intervenable variables
+2. OBSERVABLE_PREDICTIONS: What changes will be observed
+3. DESIRABLE_PREDICTIONS: How desirable outcomes will be affected
+4. STORY: A causal chain explanation using the graph relationships
+5. ACTION_HOOKS: For each relevant action, provide specific parameters and instructions
+6. CRITIQUE: Potential weaknesses or assumptions in this hypothesis
+
+Respond in JSON format:
+{
+  "prescription": "...",
+  "predictions": {
+    "observables": "...",
+    "desirables": "..."
+  },
+  "story": "...",
+  "actionHooks": [
+    {
+      "actionId": "...",
+      "parameters": { "param1": "value1" },
+      "instructions": "..."
+    }
+  ],
+  "critique": "..."
+}`;
+
+  const response = await client.chat.completions.create({
+    model: deploymentName,
+    messages: [{ role: 'user', content: prompt }],
+    temperature: 0.7,
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) throw new Error('No response from LLM');
+
+  addTokenUsage(response.usage);
+
+  const cleaned = content.replace(/```json\n?|\n?```/g, '').trim();
+  const parsed = JSON.parse(cleaned) as GeneratedHypothesis;
+
+  return parsed;
+}
+
+// ============================================
+// Graph Modification Parsing
+// ============================================
+
+export type GraphModificationAction =
+  | { type: 'add_node'; name: string; description: string; connectTo?: string; direction?: 'upstream' | 'downstream' }
+  | { type: 'remove_node'; nodeId: string }
+  | { type: 'add_edge'; source: string; target: string }
+  | { type: 'remove_edge'; source: string; target: string }
+  | { type: 'expand_node'; nodeId: string; hint?: string }
+  | { type: 'error'; message: string };
+
+export async function parseGraphModification(
+  command: string,
+  graph: CausalGraph
+): Promise<GraphModificationAction> {
+  if (!endpoint || !apiKey) {
+    throw new Error('Azure OpenAI not configured');
+  }
+
+  const prompt = `You are a graph modification parser. Given a natural language command and the current graph state, determine the intended modification.
+
+CURRENT GRAPH NODES:
+${graph.nodes.map(n => `- ID: ${n.id}, Name: ${n.displayName}, Description: ${n.description}`).join('\n')}
+
+CURRENT GRAPH EDGES:
+${graph.edges.map(e => {
+  const source = graph.nodes.find(n => n.id === e.source);
+  const target = graph.nodes.find(n => n.id === e.target);
+  return `- ${source?.displayName} → ${target?.displayName}`;
+}).join('\n')}
+
+USER COMMAND: "${command}"
+
+Parse this command and respond with ONE of these JSON formats:
+
+Add a new node:
+{"type": "add_node", "name": "node_name", "description": "what it represents", "connectTo": "existing_node_id", "direction": "upstream" or "downstream"}
+
+Remove a node:
+{"type": "remove_node", "nodeId": "node_id"}
+
+Add an edge:
+{"type": "add_edge", "source": "source_node_id", "target": "target_node_id"}
+
+Remove an edge:
+{"type": "remove_edge", "source": "source_node_id", "target": "target_node_id"}
+
+Expand a node into multiple:
+{"type": "expand_node", "nodeId": "node_id", "hint": "optional expansion hint"}
+
+If the command is unclear or invalid:
+{"type": "error", "message": "explanation of what's wrong"}
+
+Match node names flexibly (case-insensitive, partial matches OK).
+Respond with ONLY the JSON, no explanation.`;
+
+  const response = await client.chat.completions.create({
+    model: deploymentName,
+    messages: [{ role: 'user', content: prompt }],
+    temperature: 0.3,
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) throw new Error('No response from LLM');
+
+  addTokenUsage(response.usage);
+
+  const cleaned = content.replace(/```json\n?|\n?```/g, '').trim();
+  return JSON.parse(cleaned) as GraphModificationAction;
 }

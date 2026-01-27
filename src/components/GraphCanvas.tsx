@@ -13,8 +13,11 @@ import type { Node, Edge, NodeMouseHandler, NodeChange } from '@xyflow/react';
 import Dagre from '@dagrejs/dagre';
 import '@xyflow/react/dist/style.css';
 
+import ClassifiedNode from './ClassifiedNode';
 import type { CausalGraph, CausalNode } from '../types';
 import type { NodeWithDegree } from '../utils/graph';
+
+const nodeTypes = { classified: ClassifiedNode };
 
 interface GraphCanvasProps {
   graph: CausalGraph;
@@ -151,6 +154,42 @@ function getNodeStyle(
   };
 }
 
+// Get relationship color for ClassifiedNode
+function getRelationshipColor(
+  nodeId: string,
+  selectedNodeId: string | null,
+  immediateUpstream: Set<string>,
+  secondDegreeUpstream: Set<string>,
+  immediateDownstream: Set<string>,
+  higherDownstream: Set<string>,
+  consolidationMode?: boolean,
+  selectedNodeIds?: Set<string>,
+  expandMode?: boolean
+): string | undefined {
+  if (consolidationMode && selectedNodeIds?.has(nodeId)) {
+    return '#9333ea'; // Purple for multi-selected
+  }
+  if (expandMode && nodeId === selectedNodeId) {
+    return '#eab308'; // Yellow for expand mode selected
+  }
+  if (nodeId === selectedNodeId && !consolidationMode && !expandMode) {
+    return '#fbbf24'; // Yellow/amber for selected
+  }
+  if (immediateUpstream.has(nodeId)) {
+    return '#3b82f6'; // Blue for immediate upstream
+  }
+  if (secondDegreeUpstream.has(nodeId)) {
+    return '#dbeafe'; // Light blue for second degree upstream
+  }
+  if (immediateDownstream.has(nodeId)) {
+    return '#991B1B'; // Deep red for immediate downstream
+  }
+  if (higherDownstream.has(nodeId)) {
+    return '#F472B6'; // Pink for higher downstream
+  }
+  return undefined; // Default - let ClassifiedNode handle it
+}
+
 // Auto-layout using dagre
 function getLayoutedElements(nodes: Node[], edges: Edge[], direction = 'TB') {
   const g = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
@@ -220,9 +259,14 @@ function GraphCanvasInner({ graph, selectedNodeId, selectedNodeIds, consolidatio
   const initialNodes: Node[] = useMemo(() => {
     return graph.nodes.map((node) => ({
       id: node.id,
+      type: 'classified',
       position: node.position || { x: 0, y: 0 },
       data: {
         label: node.displayName,
+        classification: node.classification,
+        isDesirable: node.isDesirable,
+        isSelected: consolidationMode ? selectedNodeIds?.has(node.id) : node.id === selectedNodeId,
+        relationshipColor: getRelationshipColor(node.id, selectedNodeId, immediateUpstream, secondDegreeUpstream, immediateDownstream, higherDownstream, consolidationMode, selectedNodeIds, expandMode),
       },
       style: getNodeStyle(node.id, selectedNodeId, immediateUpstream, secondDegreeUpstream, immediateDownstream, higherDownstream, consolidationMode, selectedNodeIds, expandMode),
       selected: consolidationMode ? selectedNodeIds?.has(node.id) : node.id === selectedNodeId,
@@ -351,6 +395,7 @@ function GraphCanvasInner({ graph, selectedNodeId, selectedNodeIds, consolidatio
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        nodeTypes={nodeTypes}
         onNodesChange={handleNodesChange}
         onNodeClick={onNodeClick}
         fitView

@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import type { CausalGraph, CausalNode, Proposal, ExistingNodeProposal, ProposalConfig } from './types';
+import type { CausalGraph, CausalNode, Proposal, ExistingNodeProposal, ProposalConfig, NodeClassification, Hypothesis, ActionSpace } from './types';
 import { initialGraph, experimentPresets } from './data/initialData';
 import {
   getNode,
@@ -19,6 +19,7 @@ import {
   evaluateExistingNodes,
   proposeCondensedNode,
   proposeNodeExpansion,
+  generateHypothesis,
   type GraphContext,
   type TokenUsage,
   type CondensedNodeProposal,
@@ -38,6 +39,7 @@ import { BuildFromDataWizard } from './components/BuildFromDataWizard';
 import { HelpModal } from './components/HelpModal';
 import { WhyzenExportWizard } from './components/WhyzenExportWizard';
 import { AddNodeModal } from './components/AddNodeModal';
+import { TheoryEnginePanel } from './components/TheoryEnginePanel';
 
 function App() {
   // Core state
@@ -66,7 +68,11 @@ function App() {
 
   // Auto-save recovery state
   const [showRecoveryPrompt, setShowRecoveryPrompt] = useState(false);
-  const [recoveryData, setRecoveryData] = useState<{ graph: CausalGraph; timestamp: number } | null>(null);
+  const [recoveryData, setRecoveryData] = useState<{ graph: CausalGraph; hypotheses?: Hypothesis[]; actionSpace?: ActionSpace; timestamp: number } | null>(null);
+
+  // Hypothesis and Action Space state
+  const [hypotheses, setHypotheses] = useState<Hypothesis[]>([]);
+  const [actionSpace, setActionSpace] = useState<ActionSpace>({ actions: [] });
 
   // New Graph confirmation state
   const [confirmNewGraph, setConfirmNewGraph] = useState(false);
@@ -100,12 +106,14 @@ function App() {
       if (graph.nodes.length > 0) {
         localStorage.setItem('causeway-autosave', JSON.stringify({
           graph,
+          hypotheses,
+          actionSpace,
           timestamp: Date.now()
         }));
       }
     }, 30000);
     return () => clearInterval(timer);
-  }, [graph]);
+  }, [graph, hypotheses, actionSpace]);
 
   // Check for recovery data on mount
   useEffect(() => {
@@ -130,6 +138,8 @@ function App() {
   const handleRecoverGraph = useCallback(() => {
     if (recoveryData) {
       setGraph(recoveryData.graph);
+      if (recoveryData.hypotheses) setHypotheses(recoveryData.hypotheses);
+      if (recoveryData.actionSpace) setActionSpace(recoveryData.actionSpace);
       setSelectedNodeId(null);
       setProposals([]);
       setExistingNodeProposals([]);
@@ -200,6 +210,28 @@ function App() {
       !downstreamIds.has(n.id)
     );
   }, [graph.nodes, selectedNodeId, immediateUpstream, higherUpstream, immediateDownstream, higherDownstream]);
+
+  // Mark hypotheses as outdated when referenced nodes change
+  const markHypothesesOutdated = useCallback((changedNodeIds: string[], reason: string) => {
+    setHypotheses(prev => prev.map(hypothesis => {
+      const referencedNodes = [
+        ...hypothesis.intervenables,
+        ...hypothesis.observables,
+        ...hypothesis.desirables,
+      ];
+
+      const isAffected = changedNodeIds.some(id => referencedNodes.includes(id));
+
+      if (isAffected && hypothesis.status === 'active') {
+        return {
+          ...hypothesis,
+          status: 'outdated' as const,
+          outdatedReason: reason,
+        };
+      }
+      return hypothesis;
+    }));
+  }, []);
 
   // Handlers
   const handleNodeSelect = useCallback((nodeId: string) => {
@@ -590,6 +622,25 @@ function App() {
     setError(null);
   }, []);
 
+  const handleDeleteNode = useCallback((nodeId: string) => {
+    const node = graph.nodes.find(n => n.id === nodeId);
+
+    setGraph(prev => ({
+      ...prev,
+      nodes: prev.nodes.filter(n => n.id !== nodeId),
+      edges: prev.edges.filter(e => e.source !== nodeId && e.target !== nodeId)
+    }));
+    // Clear selection if the deleted node was selected
+    setSelectedNodeId(prev => prev === nodeId ? null : prev);
+    // Clear any proposals related to the deleted node
+    setProposals(prev => prev.filter(p => p.targetNodeId !== nodeId));
+    setExistingNodeProposals(prev => prev.filter(p => p.nodeId !== nodeId));
+    setError(null);
+
+    // Mark hypotheses as outdated
+    markHypothesesOutdated([nodeId], `Node "${node?.displayName}" was deleted`);
+  }, [graph.nodes, markHypothesesOutdated]);
+
   const handleAddProposal = useCallback((proposal: Proposal) => {
     // Check if node with this ID already exists
     const existingNode = getNode(graph, proposal.variableName);
@@ -721,6 +772,98 @@ function App() {
     setSelectedNodeId(newNode.id);
   }, []);
 
+  const handleClassifyNode = useCallback((
+    nodeId: string,
+    classification: NodeClassification,
+    isDesirable?: boolean
+  ) => {
+    setGraph(prevGraph => ({
+      ...prevGraph,
+      nodes: prevGraph.nodes.map(node => {
+        if (node.id !== nodeId) return node;
+        if (classification === null && isDesirable !== undefined) {
+          return { ...node, isDesirable };
+        }
+        if (classification === 'intervenable') {
+          return { ...node, classification, isDesirable: false };
+        }
+        return { ...node, classification, isDesirable: isDesirable ?? node.isDesirable };
+      }),
+    }));
+
+    // Mark hypotheses as outdated if they reference this node
+    const node = graph.nodes.find(n => n.id === nodeId);
+    markHypothesesOutdated([nodeId], `Node "${node?.displayName}" classification changed`);
+  }, [graph.nodes, markHypothesesOutdated]);
+
+  const handleHypothesisGenerated = useCallback((hypothesis: Hypothesis) => {
+    setHypotheses(prev => [...prev, hypothesis]);
+  }, []);
+
+  const handleRefreshHypothesis = useCallback(async (hypothesisId: string) => {
+    const hypothesis = hypotheses.find(h => h.id === hypothesisId);
+    if (!hypothesis) return;
+
+    const intervenables = graph.nodes.filter(n => hypothesis.intervenables.includes(n.id));
+    const observables = graph.nodes.filter(n => hypothesis.observables.includes(n.id));
+    const desirables = graph.nodes.filter(n => hypothesis.desirables.includes(n.id));
+
+    try {
+      const result = await generateHypothesis({
+        experimentalContext: graph.experimentalContext,
+        graph,
+        intervenables,
+        observables,
+        desirables,
+        actionSpace,
+      });
+
+      setHypotheses(prev => prev.map(h => {
+        if (h.id !== hypothesisId) return h;
+        return {
+          ...h,
+          prescription: result.prescription,
+          predictions: result.predictions,
+          story: result.story,
+          actionHooks: result.actionHooks.map(hook => ({
+            ...hook,
+            actionName: actionSpace.actions.find(a => a.id === hook.actionId)?.name || 'Unknown',
+          })),
+          critique: result.critique,
+          status: 'active' as const,
+          outdatedReason: undefined,
+        };
+      }));
+    } catch (err) {
+      console.error('Failed to refresh hypothesis:', err);
+    }
+  }, [hypotheses, graph, actionSpace]);
+
+  const handleDeleteHypothesis = useCallback((hypothesisId: string) => {
+    setHypotheses(prev => prev.filter(h => h.id !== hypothesisId));
+  }, []);
+
+  const handleExportHypothesis = useCallback((hypothesis: Hypothesis) => {
+    const exportData = {
+      hypothesis: hypothesis.prescription,
+      predictions: hypothesis.predictions,
+      story: hypothesis.story,
+      actions: hypothesis.actionHooks.map(hook => ({
+        action: hook.actionName,
+        parameters: hook.parameters,
+        instructions: hook.instructions,
+      })),
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `hypothesis-${hypothesis.id}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
+
   return (
     <div className="h-screen flex flex-col bg-gray-100">
       {/* Recovery Prompt */}
@@ -829,8 +972,26 @@ function App() {
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Graph Canvas */}
-        <div className="flex-1 relative">
+        {/* Left Panel - Theory Engine (40%) */}
+        <div className="w-2/5 h-full">
+          <TheoryEnginePanel
+            graph={graph}
+            selectedNodeId={selectedNodeId}
+            onClassifyNode={handleClassifyNode}
+            actionSpace={actionSpace}
+            onActionSpaceUpdate={setActionSpace}
+            hypotheses={hypotheses}
+            onHypothesisGenerated={handleHypothesisGenerated}
+            onRefreshHypothesis={handleRefreshHypothesis}
+            onDeleteHypothesis={handleDeleteHypothesis}
+            onExportHypothesis={handleExportHypothesis}
+          />
+        </div>
+
+        {/* Right Panel - Graph (60%) */}
+        <div className="w-3/5 h-full flex flex-col">
+          {/* Graph Canvas */}
+          <div className="flex-1 relative">
           <GraphCanvas
             graph={graph}
             selectedNodeId={selectedNodeId}
@@ -1181,6 +1342,7 @@ function App() {
           onRemoveEdge={handleRemoveEdge}
           onGenerateProposals={handleGenerateProposals}
           onEvaluateExisting={handleEvaluateExisting}
+          onDeleteNode={handleDeleteNode}
           isGenerating={isGenerating}
           generatingDirection={generatingDirection}
           existingNodeProposals={existingNodeProposals}
@@ -1193,6 +1355,7 @@ function App() {
             allNodes={graph.nodes}
           />
         </SidePanel>
+        </div>
       </div>
 
       {/* Build from Data Wizard */}
