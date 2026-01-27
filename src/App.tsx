@@ -1126,7 +1126,6 @@ function App() {
         <div className="w-2/5 h-full">
           <TheoryEnginePanel
             graph={graph}
-            selectedNodeId={selectedNodeId}
             onClassifyNode={handleClassifyNode}
             actionSpace={actionSpace}
             onActionSpaceUpdate={setActionSpace}

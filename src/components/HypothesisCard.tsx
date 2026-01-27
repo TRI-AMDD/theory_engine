@@ -63,7 +63,7 @@ export function HypothesisCard({
                 {new Date(hypothesis.createdAt).toLocaleString()}
               </span>
             </div>
-            <p className="text-sm font-medium text-gray-800 mt-1 line-clamp-2">
+            <p className={`text-sm font-medium text-gray-800 mt-1 ${expanded ? '' : 'line-clamp-2'}`}>
               {highlight(hypothesis.prescription)}
             </p>
           </div>

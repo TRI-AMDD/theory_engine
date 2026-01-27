@@ -1334,7 +1334,7 @@ Respond with JSON only (no markdown):
     }
 
     return parsed as ExpansionProposal;
-  } catch (err) {
+  } catch {
     throw new Error(`Failed to parse expansion proposal: ${cleaned.slice(0, 100)}...`);
   }
 }
@@ -1761,9 +1761,9 @@ ${input.desirables.length > 0
   : 'None specified'}
 
 AVAILABLE VALIDATION ACTIONS:
-${input.actionSpace.actions.map(a =>
-  `- ${a.name} (${a.type}): ${a.description}\n  Parameters: ${a.parameterHints?.join(', ') || 'None'}`
-).join('\n')}
+${input.actionSpace.actions.length > 0 ? input.actionSpace.actions.map(a =>
+  `- ID: "${a.id}" | ${a.name} (${a.type}): ${a.description}\n  Parameters: ${a.parameterHints?.join(', ') || 'None'}`
+).join('\n') : 'No actions defined - skip actionHooks in response'}
 ${input.conditioningHint ? `
 USER GUIDANCE:
 ${input.conditioningHint}
@@ -1788,13 +1788,15 @@ Respond in JSON format:
   "story": "...",
   "actionHooks": [
     {
-      "actionId": "...",
+      "actionId": "use exact ID from AVAILABLE VALIDATION ACTIONS above",
       "parameters": { "param1": "value1" },
       "instructions": "..."
     }
   ],
   "critique": "..."
-}`;
+}
+
+IMPORTANT: For actionHooks, use the exact "ID" values from AVAILABLE VALIDATION ACTIONS. If no actions are available, return an empty array for actionHooks.`;
 
   const response = await client.chat.completions.create({
     model: deploymentName,
@@ -1911,7 +1913,8 @@ export async function generateMultipleHypotheses(
   actionSpace: ActionSpace,
   graph: CausalGraph,
   config: HypothesisGenerationConfig,
-  onProgress?: (completed: number, total: number) => void
+  onProgress?: (completed: number, total: number) => void,
+  onHypothesisGenerated?: (hypothesis: Hypothesis) => void
 ): Promise<Hypothesis[]> {
   const hypotheses: Hypothesis[] = [];
   const existingPrescriptions: string[] = [];
@@ -1955,6 +1958,11 @@ export async function generateMultipleHypotheses(
 
     hypotheses.push(hypothesis);
     existingPrescriptions.push(generated.prescription);
+
+    // Notify immediately when each hypothesis is generated
+    if (onHypothesisGenerated) {
+      onHypothesisGenerated(hypothesis);
+    }
 
     if (onProgress) {
       onProgress(i + 1, config.count);

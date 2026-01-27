@@ -191,13 +191,24 @@ function getRelationshipColor(
   return undefined; // Default - let ClassifiedNode handle it
 }
 
+// Calculate dynamic node width based on label length
+function getNodeWidth(label: string): number {
+  const charWidth = 8; // approximate pixels per character
+  const padding = 32; // px-4 = 16px each side
+  const minWidth = 80;
+  const maxWidth = 220;
+  return Math.min(maxWidth, Math.max(minWidth, label.length * charWidth + padding));
+}
+
 // Auto-layout using dagre
 function getLayoutedElements(nodes: Node[], edges: Edge[], direction = 'TB') {
   const g = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
   g.setGraph({ rankdir: direction, nodesep: 50, ranksep: 80 });
 
   nodes.forEach((node) => {
-    g.setNode(node.id, { width: 150, height: 50 });
+    const label = (node.data as { label?: string })?.label || '';
+    const width = getNodeWidth(label);
+    g.setNode(node.id, { width, height: 50 });
   });
 
   edges.forEach((edge) => {
@@ -208,9 +219,11 @@ function getLayoutedElements(nodes: Node[], edges: Edge[], direction = 'TB') {
 
   const layoutedNodes = nodes.map((node) => {
     const position = g.node(node.id);
+    const label = (node.data as { label?: string })?.label || '';
+    const width = getNodeWidth(label);
     return {
       ...node,
-      position: { x: position.x - 75, y: position.y - 25 },
+      position: { x: position.x - width / 2, y: position.y - 25 },
     };
   });
 
