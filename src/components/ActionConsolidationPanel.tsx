@@ -20,9 +20,26 @@ export function ActionConsolidationPanel({
 
   const activeHypotheses = hypotheses.filter(h => h.status === 'active');
 
+  // Check if hypotheses have action hooks that match the action space
+  const hasMatchingActions = activeHypotheses.some(h =>
+    h.actionHooks.some(hook =>
+      actionSpace.actions.some(a => a.id === hook.actionId)
+    )
+  );
+
   const handleConsolidate = async () => {
     if (activeHypotheses.length < 2) {
       alert('Need at least 2 active hypotheses to consolidate actions');
+      return;
+    }
+
+    if (actionSpace.actions.length === 0) {
+      alert('No actions defined. Add actions in the Action Space Editor above before consolidating.');
+      return;
+    }
+
+    if (!hasMatchingActions) {
+      alert('No hypotheses have action hooks that match defined actions. Try regenerating hypotheses after adding actions.');
       return;
     }
 
@@ -33,6 +50,12 @@ export function ActionConsolidationPanel({
         actionSpace,
         conditioningText || undefined
       );
+
+      if (actionSet.actions.length === 0) {
+        alert('No common actions found across hypotheses. Try adding more actions or regenerating hypotheses.');
+        return;
+      }
+
       onConsolidated(actionSet);
     } catch (error) {
       console.error('Failed to consolidate actions:', error);
@@ -65,9 +88,22 @@ export function ActionConsolidationPanel({
         />
       </div>
 
+      {/* Status messages */}
+      {actionSpace.actions.length === 0 && (
+        <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded">
+          Add actions in the Action Space Editor above before consolidating.
+        </p>
+      )}
+
+      {actionSpace.actions.length > 0 && !hasMatchingActions && activeHypotheses.length >= 2 && (
+        <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded">
+          Hypotheses don't reference defined actions. Regenerate hypotheses after adding actions.
+        </p>
+      )}
+
       <button
         onClick={handleConsolidate}
-        disabled={isConsolidating || activeHypotheses.length < 2}
+        disabled={isConsolidating || activeHypotheses.length < 2 || actionSpace.actions.length === 0}
         className="w-full py-2 px-4 bg-purple-600 text-white rounded text-sm font-medium hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
       >
         {isConsolidating ? 'Consolidating...' : 'Consolidate Actions'}

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { Hypothesis, CausalGraph } from '../types';
-import { highlightNodeNames } from '../utils/textHighlight';
+import { highlightNodeNames, buildNodeHighlightInfo } from '../utils/textHighlight';
 
 interface HypothesisCardProps {
   hypothesis: Hypothesis;
@@ -32,7 +32,13 @@ export function HypothesisCard({
   const getNodeName = (id: string) =>
     graph.nodes.find(n => n.id === id)?.displayName || 'Unknown';
 
-  const highlight = (text: string) => highlightNodeNames(text, nodeNames);
+  // Build highlight info with classification data
+  const nodeHighlightInfo = useMemo(
+    () => buildNodeHighlightInfo(graph.nodes),
+    [graph.nodes]
+  );
+
+  const highlight = (text: string) => highlightNodeNames(text, nodeNames, nodeHighlightInfo);
 
   const isOutdated = hypothesis.status === 'outdated';
 
