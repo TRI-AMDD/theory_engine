@@ -4,17 +4,25 @@ import { HypothesisCard } from './HypothesisCard';
 interface HypothesisProposalsProps {
   hypotheses: Hypothesis[];
   graph: CausalGraph;
+  nodeNames: string[];
   onRefresh: (hypothesisId: string) => void;
   onDelete: (hypothesisId: string) => void;
   onExport: (hypothesis: Hypothesis) => void;
+  onRefine: (hypothesisId: string, feedback: string) => Promise<void>;
+  onHypothesisSelect?: (hypothesisId: string | null) => void;
+  activeHypothesisId?: string | null;
 }
 
 export function HypothesisProposals({
   hypotheses,
   graph,
+  nodeNames,
   onRefresh,
   onDelete,
-  onExport
+  onExport,
+  onRefine,
+  onHypothesisSelect,
+  activeHypothesisId
 }: HypothesisProposalsProps) {
   const activeHypotheses = hypotheses.filter(h => h.status === 'active');
   const outdatedHypotheses = hypotheses.filter(h => h.status === 'outdated');
@@ -45,9 +53,13 @@ export function HypothesisProposals({
             key={hypothesis.id}
             hypothesis={hypothesis}
             graph={graph}
+            nodeNames={nodeNames}
             onRefresh={onRefresh}
             onDelete={onDelete}
             onExport={onExport}
+            onRefine={onRefine}
+            onSelect={onHypothesisSelect}
+            isActive={hypothesis.id === activeHypothesisId}
           />
         ))}
       </div>

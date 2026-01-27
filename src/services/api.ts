@@ -1819,6 +1819,81 @@ export type GraphModificationAction =
   | { type: 'expand_node'; nodeId: string; hint?: string }
   | { type: 'error'; message: string };
 
+// ============================================
+// Hypothesis Refinement
+// ============================================
+
+export interface HypothesisRefinementInput {
+  hypothesis: {
+    prescription: string;
+    predictions: { observables: string; desirables: string };
+    story: string;
+    critique: string;
+  };
+  userFeedback: string;
+  experimentalContext: string;
+  nodeNames: string[];
+}
+
+export interface RefinedHypothesis {
+  prescription: string;
+  predictions: { observables: string; desirables: string };
+  story: string;
+  critique: string;
+  refinementNote: string;
+}
+
+export async function refineHypothesis(input: HypothesisRefinementInput): Promise<RefinedHypothesis> {
+  if (!endpoint || !apiKey) {
+    throw new Error('Azure OpenAI not configured');
+  }
+
+  const prompt = `You are refining a scientific hypothesis based on user feedback.
+
+EXPERIMENTAL CONTEXT:
+${input.experimentalContext}
+
+CURRENT HYPOTHESIS:
+Prescription: ${input.hypothesis.prescription}
+Observable Predictions: ${input.hypothesis.predictions.observables}
+Desirable Predictions: ${input.hypothesis.predictions.desirables}
+Causal Story: ${input.hypothesis.story}
+Critique: ${input.hypothesis.critique}
+
+GRAPH NODES: ${input.nodeNames.join(', ')}
+
+USER FEEDBACK/QUESTION:
+${input.userFeedback}
+
+Based on the user's feedback, provide a refined hypothesis. If it's a question, answer it and adjust the hypothesis accordingly. If it's a modification request, implement it.
+
+Respond in JSON format:
+{
+  "prescription": "Updated prescription...",
+  "predictions": {
+    "observables": "Updated observable predictions...",
+    "desirables": "Updated desirable predictions..."
+  },
+  "story": "Updated causal story...",
+  "critique": "Updated critique...",
+  "refinementNote": "Brief note about what was changed based on feedback"
+}`;
+
+  const response = await client.chat.completions.create({
+    model: deploymentName,
+    messages: [{ role: 'user', content: prompt }],
+    temperature: 0.7,
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) throw new Error('No response from LLM');
+
+  addTokenUsage(response.usage);
+
+  const cleaned = content.replace(/```json\n?|\n?```/g, '').trim();
+  return JSON.parse(cleaned) as RefinedHypothesis;
+}
+
 export async function parseGraphModification(
   command: string,
   graph: CausalGraph

@@ -29,6 +29,7 @@ interface GraphCanvasProps {
   onNodePositionsChange?: (positions: Record<string, { x: number; y: number }>) => void;
   immediateDownstream?: CausalNode[];
   higherDownstream?: NodeWithDegree[];
+  hypothesisHighlightedNodeIds?: Set<string>;
 }
 
 // Helper function to find upstream nodes at a given degree
@@ -216,7 +217,7 @@ function getLayoutedElements(nodes: Node[], edges: Edge[], direction = 'TB') {
   return { nodes: layoutedNodes, edges };
 }
 
-function GraphCanvasInner({ graph, selectedNodeId, selectedNodeIds, consolidationMode, expandMode, onNodeSelect, onNodePositionsChange, immediateDownstream: immediateDownstreamProp, higherDownstream: higherDownstreamProp }: GraphCanvasProps) {
+function GraphCanvasInner({ graph, selectedNodeId, selectedNodeIds, consolidationMode, expandMode, onNodeSelect, onNodePositionsChange, immediateDownstream: immediateDownstreamProp, higherDownstream: higherDownstreamProp, hypothesisHighlightedNodeIds }: GraphCanvasProps) {
   const [hasInitialLayout, setHasInitialLayout] = useState(false);
 
   // Track graph identity to detect preset changes
@@ -267,11 +268,12 @@ function GraphCanvasInner({ graph, selectedNodeId, selectedNodeIds, consolidatio
         isDesirable: node.isDesirable,
         isSelected: consolidationMode ? selectedNodeIds?.has(node.id) : node.id === selectedNodeId,
         relationshipColor: getRelationshipColor(node.id, selectedNodeId, immediateUpstream, secondDegreeUpstream, immediateDownstream, higherDownstream, consolidationMode, selectedNodeIds, expandMode),
+        isHypothesisHighlighted: hypothesisHighlightedNodeIds?.has(node.id) ?? false,
       },
       style: getNodeStyle(node.id, selectedNodeId, immediateUpstream, secondDegreeUpstream, immediateDownstream, higherDownstream, consolidationMode, selectedNodeIds, expandMode),
       selected: consolidationMode ? selectedNodeIds?.has(node.id) : node.id === selectedNodeId,
     }));
-  }, [graph.nodes, selectedNodeId, immediateUpstream, secondDegreeUpstream, immediateDownstream, higherDownstream, consolidationMode, selectedNodeIds, expandMode]);
+  }, [graph.nodes, selectedNodeId, immediateUpstream, secondDegreeUpstream, immediateDownstream, higherDownstream, consolidationMode, selectedNodeIds, expandMode, hypothesisHighlightedNodeIds]);
 
   // Convert CausalGraph edges to react-flow format with arrows
   const initialEdges: Edge[] = useMemo(() => {

@@ -14,6 +14,9 @@ interface TheoryEnginePanelProps {
   onRefreshHypothesis: (hypothesisId: string) => void;
   onDeleteHypothesis: (hypothesisId: string) => void;
   onExportHypothesis: (hypothesis: Hypothesis) => void;
+  onRefineHypothesis: (hypothesisId: string, feedback: string) => Promise<void>;
+  activeHypothesisId: string | null;
+  onHypothesisSelect: (hypothesisId: string | null) => void;
 }
 
 export function TheoryEnginePanel({
@@ -26,9 +29,13 @@ export function TheoryEnginePanel({
   onHypothesisGenerated,
   onRefreshHypothesis,
   onDeleteHypothesis,
-  onExportHypothesis
+  onExportHypothesis,
+  onRefineHypothesis,
+  activeHypothesisId,
+  onHypothesisSelect
 }: TheoryEnginePanelProps) {
   const selectedNode = graph.nodes.find(n => n.id === selectedNodeId);
+  const nodeNames = graph.nodes.map(n => n.displayName);
 
   // Group nodes by classification
   const intervenables = graph.nodes.filter(n => n.classification === 'intervenable');
@@ -142,9 +149,13 @@ export function TheoryEnginePanel({
           <HypothesisProposals
             hypotheses={hypotheses}
             graph={graph}
+            nodeNames={nodeNames}
             onRefresh={onRefreshHypothesis}
             onDelete={onDeleteHypothesis}
             onExport={onExportHypothesis}
+            onRefine={onRefineHypothesis}
+            onHypothesisSelect={onHypothesisSelect}
+            activeHypothesisId={activeHypothesisId}
           />
         </div>
       </div>

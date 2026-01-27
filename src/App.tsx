@@ -20,6 +20,7 @@ import {
   proposeCondensedNode,
   proposeNodeExpansion,
   generateHypothesis,
+  refineHypothesis,
   type GraphContext,
   type TokenUsage,
   type CondensedNodeProposal,
@@ -73,6 +74,7 @@ function App() {
   // Hypothesis and Action Space state
   const [hypotheses, setHypotheses] = useState<Hypothesis[]>([]);
   const [actionSpace, setActionSpace] = useState<ActionSpace>({ actions: [] });
+  const [activeHypothesisId, setActiveHypothesisId] = useState<string | null>(null);
 
   // New Graph confirmation state
   const [confirmNewGraph, setConfirmNewGraph] = useState(false);
@@ -210,6 +212,18 @@ function App() {
       !downstreamIds.has(n.id)
     );
   }, [graph.nodes, selectedNodeId, immediateUpstream, higherUpstream, immediateDownstream, higherDownstream]);
+
+  // Compute node IDs from the active hypothesis for highlighting
+  const activeHypothesisNodeIds = useMemo(() => {
+    if (!activeHypothesisId) return new Set<string>();
+    const hypothesis = hypotheses.find(h => h.id === activeHypothesisId);
+    if (!hypothesis) return new Set<string>();
+    return new Set([
+      ...hypothesis.intervenables,
+      ...hypothesis.observables,
+      ...hypothesis.desirables,
+    ]);
+  }, [activeHypothesisId, hypotheses]);
 
   // Mark hypotheses as outdated when referenced nodes change
   const markHypothesesOutdated = useCallback((changedNodeIds: string[], reason: string) => {
@@ -864,6 +878,38 @@ function App() {
     URL.revokeObjectURL(url);
   }, []);
 
+  const handleHypothesisSelect = useCallback((hypothesisId: string | null) => {
+    setActiveHypothesisId(hypothesisId);
+  }, []);
+
+  const handleRefineHypothesis = useCallback(async (hypothesisId: string, feedback: string) => {
+    const hypothesis = hypotheses.find(h => h.id === hypothesisId);
+    if (!hypothesis) return;
+
+    const result = await refineHypothesis({
+      hypothesis: {
+        prescription: hypothesis.prescription,
+        predictions: hypothesis.predictions,
+        story: hypothesis.story,
+        critique: hypothesis.critique,
+      },
+      userFeedback: feedback,
+      experimentalContext: graph.experimentalContext,
+      nodeNames: graph.nodes.map(n => n.displayName),
+    });
+
+    setHypotheses(prev => prev.map(h => {
+      if (h.id !== hypothesisId) return h;
+      return {
+        ...h,
+        prescription: result.prescription,
+        predictions: result.predictions,
+        story: result.story,
+        critique: result.critique,
+      };
+    }));
+  }, [hypotheses, graph]);
+
   return (
     <div className="h-screen flex flex-col bg-gray-100">
       {/* Recovery Prompt */}
@@ -985,6 +1031,9 @@ function App() {
             onRefreshHypothesis={handleRefreshHypothesis}
             onDeleteHypothesis={handleDeleteHypothesis}
             onExportHypothesis={handleExportHypothesis}
+            onRefineHypothesis={handleRefineHypothesis}
+            activeHypothesisId={activeHypothesisId}
+            onHypothesisSelect={handleHypothesisSelect}
           />
         </div>
 
@@ -1002,6 +1051,7 @@ function App() {
             onNodePositionsChange={handleNodePositionsChange}
             immediateDownstream={immediateDownstream}
             higherDownstream={higherDownstream}
+            hypothesisHighlightedNodeIds={activeHypothesisNodeIds}
           />
           {/* Top-right controls */}
           <div className="absolute top-4 right-4 flex flex-wrap items-center gap-2 max-w-md justify-end">
