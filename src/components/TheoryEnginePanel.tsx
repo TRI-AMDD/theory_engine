@@ -10,7 +10,9 @@ interface TheoryEnginePanelProps {
   actionSpace: ActionSpace;
   onActionSpaceUpdate: (actionSpace: ActionSpace) => void;
   hypotheses: Hypothesis[];
-  onHypothesisGenerated: (hypothesis: Hypothesis) => void;
+  onGenerateHypotheses: (hint: string, count: number) => void;
+  isGeneratingHypothesis: boolean;
+  generationProgress: { current: number; total: number } | null;
   onRefreshHypothesis: (hypothesisId: string) => void;
   onDeleteHypothesis: (hypothesisId: string) => void;
   onExportHypothesis: (hypothesis: Hypothesis) => void;
@@ -26,7 +28,9 @@ export function TheoryEnginePanel({
   actionSpace,
   onActionSpaceUpdate,
   hypotheses,
-  onHypothesisGenerated,
+  onGenerateHypotheses,
+  isGeneratingHypothesis,
+  generationProgress,
   onRefreshHypothesis,
   onDeleteHypothesis,
   onExportHypothesis,
@@ -140,8 +144,24 @@ export function TheoryEnginePanel({
           <HypothesisGenerator
             graph={graph}
             actionSpace={actionSpace}
-            onHypothesisGenerated={onHypothesisGenerated}
+            onGenerate={onGenerateHypotheses}
+            isGenerating={isGeneratingHypothesis}
           />
+
+          {/* Generation Progress */}
+          {generationProgress && (
+            <div className="mt-3 p-2 bg-blue-50 rounded-lg">
+              <div className="text-sm text-blue-700 mb-1">
+                Generating hypothesis {generationProgress.current} of {generationProgress.total}...
+              </div>
+              <div className="w-full bg-blue-200 rounded-full h-2">
+                <div
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${(generationProgress.current / generationProgress.total) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Hypothesis Proposals */}

@@ -144,3 +144,17 @@ export interface Hypothesis {
   status: 'active' | 'outdated';
   outdatedReason?: string;
 }
+
+// Configuration for batch hypothesis generation
+export interface HypothesisGenerationConfig {
+  count: number;          // Number of hypotheses to generate (1-10)
+  diversityHint?: string; // Optional hint to encourage diverse hypotheses
+}
+
+// Result of batch hypothesis generation
+export interface HypothesisBatch {
+  id: string;
+  createdAt: string;
+  hypotheses: Hypothesis[];
+  config: HypothesisGenerationConfig;
+}

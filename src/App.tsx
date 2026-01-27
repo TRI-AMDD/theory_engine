@@ -21,6 +21,7 @@ import {
   proposeNodeExpansion,
   generateHypothesis,
   refineHypothesis,
+  generateMultipleHypotheses,
   type GraphContext,
   type TokenUsage,
   type CondensedNodeProposal,
@@ -75,6 +76,8 @@ function App() {
   const [hypotheses, setHypotheses] = useState<Hypothesis[]>([]);
   const [actionSpace, setActionSpace] = useState<ActionSpace>({ actions: [] });
   const [activeHypothesisId, setActiveHypothesisId] = useState<string | null>(null);
+  const [isGeneratingHypothesis, setIsGeneratingHypothesis] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState<{current: number; total: number} | null>(null);
 
   // New Graph confirmation state
   const [confirmNewGraph, setConfirmNewGraph] = useState(false);
@@ -810,9 +813,42 @@ function App() {
     markHypothesesOutdated([nodeId], `Node "${node?.displayName}" classification changed`);
   }, [graph.nodes, markHypothesesOutdated]);
 
-  const handleHypothesisGenerated = useCallback((hypothesis: Hypothesis) => {
-    setHypotheses(prev => [...prev, hypothesis]);
-  }, []);
+  const handleGenerateHypotheses = useCallback(async (hint: string, count: number = 1) => {
+    const intervenables = graph.nodes.filter(n => n.classification === 'intervenable');
+    const observables = graph.nodes.filter(n => n.classification === 'observable');
+    const desirables = graph.nodes.filter(n => n.isDesirable);
+
+    if (observables.length === 0) {
+      alert('Please classify at least one node as observable');
+      return;
+    }
+
+    setIsGeneratingHypothesis(true);
+    setGenerationProgress({ current: 0, total: count });
+
+    try {
+      const newHypotheses = await generateMultipleHypotheses(
+        intervenables,
+        observables,
+        desirables,
+        actionSpace,
+        graph,
+        { count, diversityHint: hint || undefined },
+        (completed, total) => setGenerationProgress({ current: completed, total })
+      );
+
+      setHypotheses(prev => [...newHypotheses, ...prev]);
+      if (newHypotheses.length > 0) {
+        setActiveHypothesisId(newHypotheses[0].id);
+      }
+    } catch (error) {
+      console.error('Failed to generate hypotheses:', error);
+      alert('Failed to generate hypotheses. Please try again.');
+    } finally {
+      setIsGeneratingHypothesis(false);
+      setGenerationProgress(null);
+    }
+  }, [graph, actionSpace]);
 
   const handleRefreshHypothesis = useCallback(async (hypothesisId: string) => {
     const hypothesis = hypotheses.find(h => h.id === hypothesisId);
@@ -1027,7 +1063,9 @@ function App() {
             actionSpace={actionSpace}
             onActionSpaceUpdate={setActionSpace}
             hypotheses={hypotheses}
-            onHypothesisGenerated={handleHypothesisGenerated}
+            onGenerateHypotheses={handleGenerateHypotheses}
+            isGeneratingHypothesis={isGeneratingHypothesis}
+            generationProgress={generationProgress}
             onRefreshHypothesis={handleRefreshHypothesis}
             onDeleteHypothesis={handleDeleteHypothesis}
             onExportHypothesis={handleExportHypothesis}

@@ -1,21 +1,21 @@
 import { useState } from 'react';
-import type { CausalGraph, ActionSpace, Hypothesis } from '../types';
-import { generateHypothesis } from '../services/api';
+import type { CausalGraph, ActionSpace } from '../types';
 
 interface HypothesisGeneratorProps {
   graph: CausalGraph;
   actionSpace: ActionSpace;
-  onHypothesisGenerated: (hypothesis: Hypothesis) => void;
+  onGenerate: (hint: string, count: number) => void;
+  isGenerating?: boolean;
 }
 
 export function HypothesisGenerator({
   graph,
   actionSpace,
-  onHypothesisGenerated
+  onGenerate,
+  isGenerating = false
 }: HypothesisGeneratorProps) {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [conditioningHint, setConditioningHint] = useState('');
+  const [hypothesisCount, setHypothesisCount] = useState<number>(1);
 
   const intervenables = graph.nodes.filter(n => n.classification === 'intervenable');
   const observables = graph.nodes.filter(n => n.classification === 'observable');
@@ -23,46 +23,9 @@ export function HypothesisGenerator({
 
   const canGenerate = observables.length > 0;
 
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     if (!canGenerate) return;
-
-    setIsGenerating(true);
-    setError(null);
-
-    try {
-      const result = await generateHypothesis({
-        experimentalContext: graph.experimentalContext,
-        graph,
-        intervenables,
-        observables,
-        desirables,
-        actionSpace,
-        conditioningHint: conditioningHint.trim() || undefined,
-      });
-
-      const hypothesis: Hypothesis = {
-        id: `hyp-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-        intervenables: intervenables.map(n => n.id),
-        observables: observables.map(n => n.id),
-        desirables: desirables.map(n => n.id),
-        prescription: result.prescription,
-        predictions: result.predictions,
-        story: result.story,
-        actionHooks: result.actionHooks.map(hook => ({
-          ...hook,
-          actionName: actionSpace.actions.find(a => a.id === hook.actionId)?.name || 'Unknown',
-        })),
-        critique: result.critique,
-        status: 'active',
-      };
-
-      onHypothesisGenerated(hypothesis);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate hypothesis');
-    } finally {
-      setIsGenerating(false);
-    }
+    onGenerate(conditioningHint.trim(), hypothesisCount);
   };
 
   return (
@@ -97,6 +60,28 @@ export function HypothesisGenerator({
         </div>
       </div>
 
+      {/* Number of hypotheses */}
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">
+          Number of Hypotheses
+        </label>
+        <div className="flex items-center gap-2">
+          <input
+            type="range"
+            min="1"
+            max="10"
+            value={hypothesisCount}
+            onChange={(e) => setHypothesisCount(parseInt(e.target.value))}
+            className="flex-1"
+            disabled={isGenerating}
+          />
+          <span className="text-sm font-mono w-6 text-center">{hypothesisCount}</span>
+        </div>
+        <p className="text-[10px] text-gray-400 mt-1">
+          More hypotheses = more diverse perspectives, but longer generation time
+        </p>
+      </div>
+
       {/* Conditioning hint */}
       <div>
         <label className="block text-xs text-gray-500 mb-1">
@@ -117,10 +102,6 @@ export function HypothesisGenerator({
         <p className="text-xs text-amber-600">
           No actions defined. Hypotheses will be generated without validation hooks.
         </p>
-      )}
-
-      {error && (
-        <p className="text-xs text-red-600 bg-red-50 p-2 rounded">{error}</p>
       )}
 
       <button

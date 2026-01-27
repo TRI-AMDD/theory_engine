@@ -1,5 +1,5 @@
 import { AzureOpenAI } from 'openai';
-import type { CausalNode, CausalEdge, CausalGraph, ActionSpace, Proposal, ExistingNodeProposal, ProposalConfig, WhyzenMetadata } from '../types';
+import type { CausalNode, CausalEdge, CausalGraph, ActionSpace, Proposal, ExistingNodeProposal, ProposalConfig, WhyzenMetadata, HypothesisGenerationConfig, Hypothesis } from '../types';
 
 // Token usage tracking
 export interface TokenUsage {
@@ -1898,6 +1898,70 @@ Respond in JSON format:
 
   const cleaned = content.replace(/```json\n?|\n?```/g, '').trim();
   return JSON.parse(cleaned) as RefinedHypothesis;
+}
+
+// ============================================
+// Multi-Hypothesis Generation
+// ============================================
+
+export async function generateMultipleHypotheses(
+  intervenables: CausalNode[],
+  observables: CausalNode[],
+  desirables: CausalNode[],
+  actionSpace: ActionSpace,
+  graph: CausalGraph,
+  config: HypothesisGenerationConfig,
+  onProgress?: (completed: number, total: number) => void
+): Promise<Hypothesis[]> {
+  const hypotheses: Hypothesis[] = [];
+  const existingPrescriptions: string[] = [];
+
+  for (let i = 0; i < config.count; i++) {
+    // Build diversity prompt based on existing hypotheses
+    const diversityPrompt = existingPrescriptions.length > 0
+      ? `\n\nIMPORTANT: Generate a hypothesis that is DIFFERENT from these already generated:\n${existingPrescriptions.map((p, idx) => `${idx + 1}. ${p}`).join('\n')}\n\nFocus on a different causal pathway, mechanism, or intervention strategy.`
+      : '';
+
+    const diversityHint = config.diversityHint
+      ? `${config.diversityHint}${diversityPrompt}`
+      : diversityPrompt;
+
+    const generated = await generateHypothesis({
+      experimentalContext: graph.experimentalContext,
+      graph,
+      intervenables,
+      observables,
+      desirables,
+      actionSpace,
+      conditioningHint: diversityHint || undefined,
+    });
+
+    const hypothesis: Hypothesis = {
+      id: `hyp-${Date.now()}-${i}`,
+      createdAt: new Date().toISOString(),
+      intervenables: intervenables.map(n => n.id),
+      observables: observables.map(n => n.id),
+      desirables: desirables.map(n => n.id),
+      prescription: generated.prescription,
+      predictions: generated.predictions,
+      story: generated.story,
+      actionHooks: generated.actionHooks.map(hook => ({
+        ...hook,
+        actionName: actionSpace.actions.find(a => a.id === hook.actionId)?.name || 'Unknown',
+      })),
+      critique: generated.critique,
+      status: 'active'
+    };
+
+    hypotheses.push(hypothesis);
+    existingPrescriptions.push(generated.prescription);
+
+    if (onProgress) {
+      onProgress(i + 1, config.count);
+    }
+  }
+
+  return hypotheses;
 }
 
 export async function parseGraphModification(
