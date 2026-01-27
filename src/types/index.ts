@@ -230,3 +230,30 @@ export interface ActionSpaceGraph {
   nodes: ActionSpaceNode[];
   edges: ActionSpaceEdge[];
 }
+
+// ============================================
+// Action Modification Types
+// ============================================
+
+// Proposed modification to an action's parameters or instructions
+export interface ActionModification {
+  id: string;
+  actionId: string;
+  originalParameters: Record<string, string>;
+  proposedParameters: Record<string, string>;
+  originalInstructions: string;
+  proposedInstructions: string;
+  rationale: string;
+  affectedHypothesisIds: string[];
+  status: 'pending' | 'applied' | 'rejected';
+}
+
+// Exported action for external use
+export interface ExportedAction {
+  name: string;
+  type: ActionDefinition['type'];
+  description: string;
+  parameters: Record<string, string>;
+  instructions: string;
+  sourceHypotheses: string[];  // Human-readable hypothesis summaries
+}

@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import type { CausalGraph, CausalNode, Proposal, ExistingNodeProposal, ProposalConfig, NodeClassification, Hypothesis, ActionSpace, ConsolidatedActionSet, VisualizationMode } from './types';
+import type { CausalGraph, CausalNode, Proposal, ExistingNodeProposal, ProposalConfig, NodeClassification, Hypothesis, ActionSpace, ConsolidatedActionSet, VisualizationMode, ActionModification } from './types';
 import { initialGraph, experimentPresets } from './data/initialData';
 import {
   getNode,
@@ -43,6 +43,8 @@ import { HelpModal } from './components/HelpModal';
 import { WhyzenExportWizard } from './components/WhyzenExportWizard';
 import { AddNodeModal } from './components/AddNodeModal';
 import { TheoryEnginePanel } from './components/TheoryEnginePanel';
+import { ActionDetailPanel } from './components/ActionDetailPanel';
+import { ModificationConfirmModal } from './components/ModificationConfirmModal';
 
 function App() {
   // Core state
@@ -84,6 +86,7 @@ function App() {
   // Visualization mode state
   const [visualizationMode, setVisualizationMode] = useState<VisualizationMode>('causal');
   const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
+  const [pendingModification, setPendingModification] = useState<ActionModification | null>(null);
 
   // New Graph confirmation state
   const [confirmNewGraph, setConfirmNewGraph] = useState(false);
@@ -954,6 +957,63 @@ function App() {
     }));
   }, [hypotheses, graph]);
 
+  // Action modification handlers
+  const handleProposeModification = useCallback((
+    actionId: string,
+    proposedParams: Record<string, string>,
+    proposedInstructions: string
+  ) => {
+    const action = consolidatedActionSet?.actions.find(a => a.id === actionId);
+    if (!action) return;
+
+    const modification: ActionModification = {
+      id: `mod-${Date.now()}`,
+      actionId,
+      originalParameters: action.commonParameters,
+      proposedParameters: proposedParams,
+      originalInstructions: action.consolidatedInstructions,
+      proposedInstructions: proposedInstructions,
+      rationale: 'User proposed modification',
+      affectedHypothesisIds: action.hypothesisLinks.map(l => l.hypothesisId),
+      status: 'pending'
+    };
+
+    setPendingModification(modification);
+  }, [consolidatedActionSet]);
+
+  const handleApplyModification = useCallback(() => {
+    if (!pendingModification || !consolidatedActionSet) return;
+
+    // Update the consolidated action set
+    setConsolidatedActionSet(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        actions: prev.actions.map(action => {
+          if (action.id !== pendingModification.actionId) return action;
+          return {
+            ...action,
+            commonParameters: pendingModification.proposedParameters,
+            consolidatedInstructions: pendingModification.proposedInstructions
+          };
+        })
+      };
+    });
+
+    setPendingModification(null);
+    setSelectedActionId(null);
+  }, [pendingModification, consolidatedActionSet]);
+
+  const handleRejectModification = useCallback(() => {
+    setPendingModification(null);
+  }, []);
+
+  // Get selected action for detail panel
+  const selectedAction = useMemo(() => {
+    if (!selectedActionId || !consolidatedActionSet) return null;
+    return consolidatedActionSet.actions.find(a => a.id === selectedActionId) || null;
+  }, [selectedActionId, consolidatedActionSet]);
+
   return (
     <div className="h-screen flex flex-col bg-gray-100">
       {/* Recovery Prompt */}
@@ -1544,6 +1604,27 @@ function App() {
             setApiConfigured(isApiConfigured());
             setShowApiConfig(false);
           }}
+        />
+      )}
+
+      {/* Action Detail Panel */}
+      {selectedAction && visualizationMode === 'action-space' && (
+        <ActionDetailPanel
+          action={selectedAction}
+          hypotheses={hypotheses}
+          onClose={() => setSelectedActionId(null)}
+          onProposeModification={handleProposeModification}
+        />
+      )}
+
+      {/* Modification Confirm Modal */}
+      {pendingModification && (
+        <ModificationConfirmModal
+          modification={pendingModification}
+          hypotheses={hypotheses}
+          onConfirm={handleApplyModification}
+          onReject={handleRejectModification}
+          onClose={() => setPendingModification(null)}
         />
       )}
     </div>
