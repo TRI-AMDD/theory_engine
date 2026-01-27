@@ -1,7 +1,8 @@
-import type { CausalGraph, NodeClassification, ActionSpace, Hypothesis } from '../types';
+import type { CausalGraph, NodeClassification, ActionSpace, Hypothesis, ConsolidatedActionSet } from '../types';
 import { ActionSpaceEditor } from './ActionSpaceEditor';
 import { HypothesisGenerator } from './HypothesisGenerator';
 import { HypothesisProposals } from './HypothesisProposals';
+import { ActionConsolidationPanel } from './ActionConsolidationPanel';
 
 interface TheoryEnginePanelProps {
   graph: CausalGraph;
@@ -19,6 +20,8 @@ interface TheoryEnginePanelProps {
   onRefineHypothesis: (hypothesisId: string, feedback: string) => Promise<void>;
   activeHypothesisId: string | null;
   onHypothesisSelect: (hypothesisId: string | null) => void;
+  consolidatedActionSet: ConsolidatedActionSet | null;
+  onConsolidatedActionSet: (actionSet: ConsolidatedActionSet) => void;
 }
 
 export function TheoryEnginePanel({
@@ -36,7 +39,9 @@ export function TheoryEnginePanel({
   onExportHypothesis,
   onRefineHypothesis,
   activeHypothesisId,
-  onHypothesisSelect
+  onHypothesisSelect,
+  consolidatedActionSet,
+  onConsolidatedActionSet
 }: TheoryEnginePanelProps) {
   const selectedNode = graph.nodes.find(n => n.id === selectedNodeId);
   const nodeNames = graph.nodes.map(n => n.displayName);
@@ -165,7 +170,7 @@ export function TheoryEnginePanel({
         </div>
 
         {/* Hypothesis Proposals */}
-        <div className="p-4">
+        <div className="p-4 border-b border-gray-200">
           <HypothesisProposals
             hypotheses={hypotheses}
             graph={graph}
@@ -178,6 +183,18 @@ export function TheoryEnginePanel({
             activeHypothesisId={activeHypothesisId}
           />
         </div>
+
+        {/* Action Consolidation - only show with 2+ hypotheses */}
+        {hypotheses.filter(h => h.status === 'active').length >= 2 && (
+          <div className="p-4">
+            <ActionConsolidationPanel
+              hypotheses={hypotheses}
+              actionSpace={actionSpace}
+              onConsolidated={onConsolidatedActionSet}
+              existingActionSet={consolidatedActionSet}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

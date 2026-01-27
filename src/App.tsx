@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import type { CausalGraph, CausalNode, Proposal, ExistingNodeProposal, ProposalConfig, NodeClassification, Hypothesis, ActionSpace } from './types';
+import type { CausalGraph, CausalNode, Proposal, ExistingNodeProposal, ProposalConfig, NodeClassification, Hypothesis, ActionSpace, ConsolidatedActionSet } from './types';
 import { initialGraph, experimentPresets } from './data/initialData';
 import {
   getNode,
@@ -78,6 +78,7 @@ function App() {
   const [activeHypothesisId, setActiveHypothesisId] = useState<string | null>(null);
   const [isGeneratingHypothesis, setIsGeneratingHypothesis] = useState(false);
   const [generationProgress, setGenerationProgress] = useState<{current: number; total: number} | null>(null);
+  const [consolidatedActionSet, setConsolidatedActionSet] = useState<ConsolidatedActionSet | null>(null);
 
   // New Graph confirmation state
   const [confirmNewGraph, setConfirmNewGraph] = useState(false);
@@ -1072,6 +1073,8 @@ function App() {
             onRefineHypothesis={handleRefineHypothesis}
             activeHypothesisId={activeHypothesisId}
             onHypothesisSelect={handleHypothesisSelect}
+            consolidatedActionSet={consolidatedActionSet}
+            onConsolidatedActionSet={setConsolidatedActionSet}
           />
         </div>
 

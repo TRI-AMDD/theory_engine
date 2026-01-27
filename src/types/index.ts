@@ -158,3 +158,40 @@ export interface HypothesisBatch {
   hypotheses: Hypothesis[];
   config: HypothesisGenerationConfig;
 }
+
+// ============================================
+// Consolidated Action Types
+// ============================================
+
+// An action linked to multiple hypotheses
+export interface ConsolidatedAction {
+  id: string;
+  actionId: string;                    // Original action definition ID
+  actionName: string;
+  actionType: ActionDefinition['type'];
+  description: string;
+
+  // Aggregated from hypothesis action hooks
+  hypothesisLinks: {
+    hypothesisId: string;
+    parameters: Record<string, string>;
+    instructions: string;
+  }[];
+
+  // Utility score (higher = serves more hypotheses)
+  utilityScore: number;
+
+  // Merged parameters (common across hypotheses)
+  commonParameters: Record<string, string>;
+
+  // LLM-generated consolidated instructions
+  consolidatedInstructions: string;
+}
+
+export interface ConsolidatedActionSet {
+  id: string;
+  createdAt: string;
+  actions: ConsolidatedAction[];
+  sourceHypothesisIds: string[];
+  conditioningText?: string;
+}

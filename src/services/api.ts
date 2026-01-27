@@ -1,5 +1,5 @@
 import { AzureOpenAI } from 'openai';
-import type { CausalNode, CausalEdge, CausalGraph, ActionSpace, Proposal, ExistingNodeProposal, ProposalConfig, WhyzenMetadata, HypothesisGenerationConfig, Hypothesis } from '../types';
+import type { CausalNode, CausalEdge, CausalGraph, ActionSpace, ActionDefinition, Proposal, ExistingNodeProposal, ProposalConfig, WhyzenMetadata, HypothesisGenerationConfig, Hypothesis, ConsolidatedAction, ConsolidatedActionSet, HypothesisActionHook } from '../types';
 
 // Token usage tracking
 export interface TokenUsage {
@@ -1962,6 +1962,116 @@ export async function generateMultipleHypotheses(
   }
 
   return hypotheses;
+}
+
+// ============================================
+// Action Consolidation
+// ============================================
+
+async function generateConsolidatedInstructions(
+  action: ActionDefinition,
+  instructionsList: string[],
+  conditioningText?: string
+): Promise<string> {
+  const prompt = `Given an action "${action.name}" (${action.type}) with the following description:
+${action.description}
+
+Multiple hypotheses have generated these specific instructions for executing this action:
+${instructionsList.map((inst, i) => `${i + 1}. ${inst}`).join('\n')}
+
+${conditioningText ? `User guidance: ${conditioningText}\n` : ''}
+Generate a SINGLE consolidated set of instructions that would satisfy all the above requirements. Focus on:
+1. Finding common elements
+2. Noting any hypothesis-specific variations
+3. Providing a clear, actionable execution plan
+
+Respond with just the consolidated instructions (2-4 sentences).`;
+
+  const response = await callLLM(prompt, 'You are a scientific methodology expert consolidating action plans.', 0.3, 500);
+  return response.trim();
+}
+
+export async function consolidateHypothesisActions(
+  hypotheses: Hypothesis[],
+  actionSpace: ActionSpace,
+  conditioningText?: string
+): Promise<ConsolidatedActionSet> {
+  // Collect all action hooks from all hypotheses
+  const actionHookMap = new Map<string, {
+    action: ActionDefinition;
+    hooks: { hypothesisId: string; hook: HypothesisActionHook }[];
+  }>();
+
+  for (const hyp of hypotheses) {
+    for (const hook of hyp.actionHooks) {
+      const existing = actionHookMap.get(hook.actionId);
+      const action = actionSpace.actions.find(a => a.id === hook.actionId);
+      if (!action) continue;
+
+      if (existing) {
+        existing.hooks.push({ hypothesisId: hyp.id, hook });
+      } else {
+        actionHookMap.set(hook.actionId, {
+          action,
+          hooks: [{ hypothesisId: hyp.id, hook }]
+        });
+      }
+    }
+  }
+
+  // Build consolidated actions
+  const consolidatedActions: ConsolidatedAction[] = [];
+
+  for (const [actionId, data] of actionHookMap) {
+    // Find common parameters
+    const allParams = data.hooks.map(h => h.hook.parameters);
+    const commonParams: Record<string, string> = {};
+
+    if (allParams.length > 0) {
+      const firstParams = allParams[0];
+      for (const [key, value] of Object.entries(firstParams)) {
+        const isCommon = allParams.every(p => p[key] === value);
+        if (isCommon) {
+          commonParams[key] = value;
+        }
+      }
+    }
+
+    // Generate consolidated instructions via LLM
+    const instructionsList = data.hooks.map(h => h.hook.instructions);
+    const consolidatedInstructions = await generateConsolidatedInstructions(
+      data.action,
+      instructionsList,
+      conditioningText
+    );
+
+    consolidatedActions.push({
+      id: `ca-${Date.now()}-${actionId}`,
+      actionId,
+      actionName: data.action.name,
+      actionType: data.action.type,
+      description: data.action.description,
+      hypothesisLinks: data.hooks.map(h => ({
+        hypothesisId: h.hypothesisId,
+        parameters: h.hook.parameters,
+        instructions: h.hook.instructions
+      })),
+      utilityScore: data.hooks.length,
+      commonParameters: commonParams,
+      consolidatedInstructions
+    });
+  }
+
+  // Sort by utility score (descending)
+  consolidatedActions.sort((a, b) => b.utilityScore - a.utilityScore);
+
+  return {
+    id: `cas-${Date.now()}`,
+    createdAt: new Date().toISOString(),
+    actions: consolidatedActions,
+    sourceHypothesisIds: hypotheses.map(h => h.id),
+    conditioningText
+  };
 }
 
 export async function parseGraphModification(
