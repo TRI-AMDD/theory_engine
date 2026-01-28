@@ -1,7 +1,10 @@
 import { AzureOpenAI } from 'openai';
 import type { CausalNode, CausalEdge, CausalGraph, ActionSpace, ActionDefinition, Proposal, ExistingNodeProposal, ProposalConfig, WhyzenMetadata, HypothesisGenerationConfig, Hypothesis, ConsolidatedAction, ConsolidatedActionSet, HypothesisActionHook } from '../types';
-// Computational chemistry context available for future action generation enhancement
-// import { getSimulationParameterContext, getStructureGenerationContext, ACTION_PARAMETER_TEMPLATES } from '../data/computationalChemistryContext';
+import {
+  getSimulationParameterContext,
+  getStructureGenerationContext,
+  ACTION_PARAMETER_TEMPLATES
+} from '../data/computationalChemistryContext';
 
 // Token usage tracking
 export interface TokenUsage {
@@ -1764,6 +1767,17 @@ AVAILABLE VALIDATION ACTIONS:
 ${input.actionSpace.actions.length > 0 ? input.actionSpace.actions.map(a =>
   `- ID: "${a.id}" | ${a.name} (${a.type}): ${a.description}\n  Parameters: ${a.parameterHints?.join(', ') || 'None'}`
 ).join('\n') : 'No actions defined - skip actionHooks in response'}
+${input.actionSpace.actions.some(a => a.type === 'md_simulation') ? `
+COMPUTATIONAL CHEMISTRY PARAMETER GUIDANCE:
+When specifying parameters for MD, AIMD, or DFT actions, use these standardized parameter names and values:
+${getSimulationParameterContext()}
+${getStructureGenerationContext()}
+
+PARAMETER TEMPLATES (use as starting points):
+${ACTION_PARAMETER_TEMPLATES.slice(0, 4).map(t =>
+  `- ${t.name}: Required: [${t.requiredParameters.join(', ')}], Optional: [${t.optionalParameters.join(', ')}]`
+).join('\n')}
+` : ''}
 ${input.conditioningHint ? `
 USER GUIDANCE:
 ${input.conditioningHint}

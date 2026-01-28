@@ -7,7 +7,17 @@ interface ActionSpaceEditorProps {
 }
 
 const ACTION_TYPES = [
-  { value: 'md_simulation', label: 'MD Simulation', defaultHints: ['temperature', 'duration', 'structure'] },
+  {
+    value: 'md_simulation',
+    label: 'MD Simulation',
+    defaultHints: [
+      'structure',           // DB reference + modifications (e.g., "MP:mp-149 + supercell(2x2x2)")
+      'temperature',         // Target temperature (K)
+      'simulation_time',     // Duration (ps/ns)
+      'ensemble',            // NVE/NVT/NPT
+      'force_field',         // ReaxFF/MLP/EAM/etc. or xc_functional for AIMD/DFT
+    ]
+  },
   { value: 'experiment', label: 'Experiment', defaultHints: ['method', 'conditions', 'samples'] },
   { value: 'literature', label: 'Literature Search', defaultHints: ['keywords', 'databases'] },
   { value: 'dataset', label: 'Dataset Query', defaultHints: ['dataset_name', 'query_type'] },
