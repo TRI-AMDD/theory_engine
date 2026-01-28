@@ -1,5 +1,6 @@
 import type { CausalNode, CausalEdge, CausalGraph, WhyzenMetadata } from '../types';
 import rdeWhyzenRaw from './rde_graph.json';
+import drxGraphRaw from './drx_graph.json';
 
 // Helper to convert snake_case to Title Case
 function snakeToTitle(name: string): string {
@@ -1690,6 +1691,16 @@ export const experimentPresets: ExperimentPreset[] = [
       nodes: aimdElectrolyteNodes,
       edges: aimdElectrolyteEdges,
       experimentalContext: aimdElectrolyteContext
+    }
+  },
+  {
+    id: 'drx-cathode',
+    name: 'DRX Cathode Experiments',
+    description: `Disordered rocksalt cathode composition and testing (${drxGraphRaw.nodes.length} nodes, ${drxGraphRaw.edges.length} edges)`,
+    graph: {
+      nodes: drxGraphRaw.nodes as CausalNode[],
+      edges: drxGraphRaw.edges as CausalEdge[],
+      experimentalContext: drxGraphRaw.experimentalContext
     }
   }
 ];

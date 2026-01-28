@@ -29,6 +29,7 @@ interface GraphCanvasProps {
   onNodePositionsChange?: (positions: Record<string, { x: number; y: number }>) => void;
   immediateDownstream?: CausalNode[];
   higherDownstream?: NodeWithDegree[];
+  hypothesisHighlightedNodeIds?: Set<string>;
 }
 
 // Helper function to find upstream nodes at a given degree
@@ -190,13 +191,24 @@ function getRelationshipColor(
   return undefined; // Default - let ClassifiedNode handle it
 }
 
+// Calculate dynamic node width based on label length
+function getNodeWidth(label: string): number {
+  const charWidth = 8; // approximate pixels per character
+  const padding = 32; // px-4 = 16px each side
+  const minWidth = 80;
+  const maxWidth = 220;
+  return Math.min(maxWidth, Math.max(minWidth, label.length * charWidth + padding));
+}
+
 // Auto-layout using dagre
 function getLayoutedElements(nodes: Node[], edges: Edge[], direction = 'TB') {
   const g = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
   g.setGraph({ rankdir: direction, nodesep: 50, ranksep: 80 });
 
   nodes.forEach((node) => {
-    g.setNode(node.id, { width: 150, height: 50 });
+    const label = (node.data as { label?: string })?.label || '';
+    const width = getNodeWidth(label);
+    g.setNode(node.id, { width, height: 50 });
   });
 
   edges.forEach((edge) => {
@@ -207,16 +219,18 @@ function getLayoutedElements(nodes: Node[], edges: Edge[], direction = 'TB') {
 
   const layoutedNodes = nodes.map((node) => {
     const position = g.node(node.id);
+    const label = (node.data as { label?: string })?.label || '';
+    const width = getNodeWidth(label);
     return {
       ...node,
-      position: { x: position.x - 75, y: position.y - 25 },
+      position: { x: position.x - width / 2, y: position.y - 25 },
     };
   });
 
   return { nodes: layoutedNodes, edges };
 }
 
-function GraphCanvasInner({ graph, selectedNodeId, selectedNodeIds, consolidationMode, expandMode, onNodeSelect, onNodePositionsChange, immediateDownstream: immediateDownstreamProp, higherDownstream: higherDownstreamProp }: GraphCanvasProps) {
+function GraphCanvasInner({ graph, selectedNodeId, selectedNodeIds, consolidationMode, expandMode, onNodeSelect, onNodePositionsChange, immediateDownstream: immediateDownstreamProp, higherDownstream: higherDownstreamProp, hypothesisHighlightedNodeIds }: GraphCanvasProps) {
   const [hasInitialLayout, setHasInitialLayout] = useState(false);
 
   // Track graph identity to detect preset changes
@@ -267,11 +281,12 @@ function GraphCanvasInner({ graph, selectedNodeId, selectedNodeIds, consolidatio
         isDesirable: node.isDesirable,
         isSelected: consolidationMode ? selectedNodeIds?.has(node.id) : node.id === selectedNodeId,
         relationshipColor: getRelationshipColor(node.id, selectedNodeId, immediateUpstream, secondDegreeUpstream, immediateDownstream, higherDownstream, consolidationMode, selectedNodeIds, expandMode),
+        isHypothesisHighlighted: hypothesisHighlightedNodeIds?.has(node.id) ?? false,
       },
       style: getNodeStyle(node.id, selectedNodeId, immediateUpstream, secondDegreeUpstream, immediateDownstream, higherDownstream, consolidationMode, selectedNodeIds, expandMode),
       selected: consolidationMode ? selectedNodeIds?.has(node.id) : node.id === selectedNodeId,
     }));
-  }, [graph.nodes, selectedNodeId, immediateUpstream, secondDegreeUpstream, immediateDownstream, higherDownstream, consolidationMode, selectedNodeIds, expandMode]);
+  }, [graph.nodes, selectedNodeId, immediateUpstream, secondDegreeUpstream, immediateDownstream, higherDownstream, consolidationMode, selectedNodeIds, expandMode, hypothesisHighlightedNodeIds]);
 
   // Convert CausalGraph edges to react-flow format with arrows
   const initialEdges: Edge[] = useMemo(() => {
@@ -400,6 +415,8 @@ function GraphCanvasInner({ graph, selectedNodeId, selectedNodeIds, consolidatio
         onNodeClick={onNodeClick}
         fitView
         fitViewOptions={{ padding: 0.2 }}
+        minZoom={0.05}
+        maxZoom={2}
         attributionPosition="bottom-left"
       >
         <Background color="#e5e7eb" gap={16} />

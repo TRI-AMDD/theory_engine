@@ -8,14 +8,27 @@ interface ClassifiedNodeData extends Record<string, unknown> {
   isDesirable?: boolean;
   isSelected?: boolean;
   relationshipColor?: string;
+  isHypothesisHighlighted?: boolean;
 }
 
 type ClassifiedNodeType = Node<ClassifiedNodeData, 'classified'>;
 
 function ClassifiedNode({ data }: NodeProps<ClassifiedNodeType>) {
-  const { label, classification, isDesirable, isSelected, relationshipColor } = data;
+  const { label, classification, isDesirable, isSelected, relationshipColor, isHypothesisHighlighted } = data;
 
   const isObservableAndDesirable = classification === 'observable' && isDesirable;
+
+  // Calculate dynamic width based on label length
+  const getNodeWidth = () => {
+    const charWidth = 8; // approximate pixels per character
+    const padding = 32; // px-4 = 16px each side
+    const minWidth = 80;
+    const maxWidth = 220;
+    const calculatedWidth = Math.min(maxWidth, Math.max(minWidth, label.length * charWidth + padding));
+    return calculatedWidth;
+  };
+
+  const nodeWidth = getNodeWidth();
 
   const getShapeStyles = (): React.CSSProperties => {
     const baseColor = relationshipColor || (isSelected ? '#fbbf24' : '#ffffff');
@@ -60,17 +73,34 @@ function ClassifiedNode({ data }: NodeProps<ClassifiedNodeType>) {
     };
   };
 
+  const highlightStyle: React.CSSProperties = isHypothesisHighlighted ? {
+    boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.5), 0 0 12px rgba(59, 130, 246, 0.3)',
+    animation: 'hypothesisHighlightPulse 2s infinite',
+  } : {};
+
   return (
-    <div
-      className="px-4 py-2 min-w-[80px] min-h-[40px] flex items-center justify-center text-center"
-      style={getShapeStyles()}
-    >
-      <Handle type="target" position={Position.Top} className="w-2 h-2" />
-      <span className="text-sm font-medium text-gray-900 truncate max-w-[120px]">
-        {label}
-      </span>
-      <Handle type="source" position={Position.Bottom} className="w-2 h-2" />
-    </div>
+    <>
+      <style>{`
+        @keyframes hypothesisHighlightPulse {
+          0%, 100% {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5), 0 0 12px rgba(59, 130, 246, 0.3);
+          }
+          50% {
+            box-shadow: 0 0 0 5px rgba(59, 130, 246, 0.7), 0 0 20px rgba(59, 130, 246, 0.5);
+          }
+        }
+      `}</style>
+      <div
+        className="px-4 py-2 min-h-[40px] flex items-center justify-center text-center"
+        style={{ ...getShapeStyles(), ...highlightStyle, width: `${nodeWidth}px` }}
+      >
+        <Handle type="target" position={Position.Top} className="w-2 h-2" />
+        <span className="text-sm font-medium text-gray-900 whitespace-nowrap">
+          {label}
+        </span>
+        <Handle type="source" position={Position.Bottom} className="w-2 h-2" />
+      </div>
+    </>
   );
 }
 

@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import type { CausalGraph, CausalNode, Proposal, ExistingNodeProposal, ProposalConfig, NodeClassification, Hypothesis, ActionSpace } from './types';
+import type { CausalGraph, CausalNode, Proposal, ExistingNodeProposal, ProposalConfig, NodeClassification, Hypothesis, ActionSpace, ConsolidatedActionSet, VisualizationMode, ActionModification } from './types';
 import { initialGraph, experimentPresets } from './data/initialData';
 import {
   getNode,
@@ -20,6 +20,8 @@ import {
   proposeCondensedNode,
   proposeNodeExpansion,
   generateHypothesis,
+  refineHypothesis,
+  generateMultipleHypotheses,
   type GraphContext,
   type TokenUsage,
   type CondensedNodeProposal,
@@ -32,6 +34,7 @@ import {
   getApiConfig
 } from './services/api';
 import { GraphCanvas } from './components/GraphCanvas';
+import { ActionSpaceCanvas } from './components/ActionSpaceCanvas';
 import { SidePanel } from './components/SidePanel';
 import { ProposalList } from './components/ProposalList';
 import { ContextHeader } from './components/ContextHeader';
@@ -40,6 +43,8 @@ import { HelpModal } from './components/HelpModal';
 import { WhyzenExportWizard } from './components/WhyzenExportWizard';
 import { AddNodeModal } from './components/AddNodeModal';
 import { TheoryEnginePanel } from './components/TheoryEnginePanel';
+import { ActionDetailPanel } from './components/ActionDetailPanel';
+import { ModificationConfirmModal } from './components/ModificationConfirmModal';
 
 function App() {
   // Core state
@@ -73,6 +78,15 @@ function App() {
   // Hypothesis and Action Space state
   const [hypotheses, setHypotheses] = useState<Hypothesis[]>([]);
   const [actionSpace, setActionSpace] = useState<ActionSpace>({ actions: [] });
+  const [activeHypothesisId, setActiveHypothesisId] = useState<string | null>(null);
+  const [isGeneratingHypothesis, setIsGeneratingHypothesis] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState<{current: number; total: number} | null>(null);
+  const [consolidatedActionSet, setConsolidatedActionSet] = useState<ConsolidatedActionSet | null>(null);
+
+  // Visualization mode state
+  const [visualizationMode, setVisualizationMode] = useState<VisualizationMode>('causal');
+  const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
+  const [pendingModification, setPendingModification] = useState<ActionModification | null>(null);
 
   // New Graph confirmation state
   const [confirmNewGraph, setConfirmNewGraph] = useState(false);
@@ -210,6 +224,18 @@ function App() {
       !downstreamIds.has(n.id)
     );
   }, [graph.nodes, selectedNodeId, immediateUpstream, higherUpstream, immediateDownstream, higherDownstream]);
+
+  // Compute node IDs from the active hypothesis for highlighting
+  const activeHypothesisNodeIds = useMemo(() => {
+    if (!activeHypothesisId) return new Set<string>();
+    const hypothesis = hypotheses.find(h => h.id === activeHypothesisId);
+    if (!hypothesis) return new Set<string>();
+    return new Set([
+      ...hypothesis.intervenables,
+      ...hypothesis.observables,
+      ...hypothesis.desirables,
+    ]);
+  }, [activeHypothesisId, hypotheses]);
 
   // Mark hypotheses as outdated when referenced nodes change
   const markHypothesesOutdated = useCallback((changedNodeIds: string[], reason: string) => {
@@ -781,13 +807,15 @@ function App() {
       ...prevGraph,
       nodes: prevGraph.nodes.map(node => {
         if (node.id !== nodeId) return node;
-        if (classification === null && isDesirable !== undefined) {
-          return { ...node, isDesirable };
-        }
         if (classification === 'intervenable') {
           return { ...node, classification, isDesirable: false };
         }
-        return { ...node, classification, isDesirable: isDesirable ?? node.isDesirable };
+        // For null, observable, or desirable - update both fields
+        return {
+          ...node,
+          classification,
+          isDesirable: isDesirable ?? node.isDesirable
+        };
       }),
     }));
 
@@ -796,9 +824,42 @@ function App() {
     markHypothesesOutdated([nodeId], `Node "${node?.displayName}" classification changed`);
   }, [graph.nodes, markHypothesesOutdated]);
 
-  const handleHypothesisGenerated = useCallback((hypothesis: Hypothesis) => {
-    setHypotheses(prev => [...prev, hypothesis]);
-  }, []);
+  const handleGenerateHypotheses = useCallback(async (hint: string, count: number = 1) => {
+    const intervenables = graph.nodes.filter(n => n.classification === 'intervenable');
+    const observables = graph.nodes.filter(n => n.classification === 'observable');
+    const desirables = graph.nodes.filter(n => n.isDesirable);
+
+    if (observables.length === 0) {
+      alert('Please classify at least one node as observable');
+      return;
+    }
+
+    setIsGeneratingHypothesis(true);
+    setGenerationProgress({ current: 0, total: count });
+
+    try {
+      await generateMultipleHypotheses(
+        intervenables,
+        observables,
+        desirables,
+        actionSpace,
+        graph,
+        { count, diversityHint: hint || undefined },
+        (completed, total) => setGenerationProgress({ current: completed, total }),
+        // Add each hypothesis immediately as it's generated
+        (hypothesis) => {
+          setHypotheses(prev => [hypothesis, ...prev]);
+          setActiveHypothesisId(hypothesis.id);
+        }
+      );
+    } catch (error) {
+      console.error('Failed to generate hypotheses:', error);
+      alert('Failed to generate hypotheses. Please try again.');
+    } finally {
+      setIsGeneratingHypothesis(false);
+      setGenerationProgress(null);
+    }
+  }, [graph, actionSpace]);
 
   const handleRefreshHypothesis = useCallback(async (hypothesisId: string) => {
     const hypothesis = hypotheses.find(h => h.id === hypothesisId);
@@ -863,6 +924,95 @@ function App() {
     a.click();
     URL.revokeObjectURL(url);
   }, []);
+
+  const handleHypothesisSelect = useCallback((hypothesisId: string | null) => {
+    setActiveHypothesisId(hypothesisId);
+  }, []);
+
+  const handleRefineHypothesis = useCallback(async (hypothesisId: string, feedback: string) => {
+    const hypothesis = hypotheses.find(h => h.id === hypothesisId);
+    if (!hypothesis) return;
+
+    const result = await refineHypothesis({
+      hypothesis: {
+        prescription: hypothesis.prescription,
+        predictions: hypothesis.predictions,
+        story: hypothesis.story,
+        critique: hypothesis.critique,
+      },
+      userFeedback: feedback,
+      experimentalContext: graph.experimentalContext,
+      nodeNames: graph.nodes.map(n => n.displayName),
+    });
+
+    setHypotheses(prev => prev.map(h => {
+      if (h.id !== hypothesisId) return h;
+      return {
+        ...h,
+        prescription: result.prescription,
+        predictions: result.predictions,
+        story: result.story,
+        critique: result.critique,
+      };
+    }));
+  }, [hypotheses, graph]);
+
+  // Action modification handlers
+  const handleProposeModification = useCallback((
+    actionId: string,
+    proposedParams: Record<string, string>,
+    proposedInstructions: string
+  ) => {
+    const action = consolidatedActionSet?.actions.find(a => a.id === actionId);
+    if (!action) return;
+
+    const modification: ActionModification = {
+      id: `mod-${Date.now()}`,
+      actionId,
+      originalParameters: action.commonParameters,
+      proposedParameters: proposedParams,
+      originalInstructions: action.consolidatedInstructions,
+      proposedInstructions: proposedInstructions,
+      rationale: 'User proposed modification',
+      affectedHypothesisIds: action.hypothesisLinks.map(l => l.hypothesisId),
+      status: 'pending'
+    };
+
+    setPendingModification(modification);
+  }, [consolidatedActionSet]);
+
+  const handleApplyModification = useCallback(() => {
+    if (!pendingModification || !consolidatedActionSet) return;
+
+    // Update the consolidated action set
+    setConsolidatedActionSet(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        actions: prev.actions.map(action => {
+          if (action.id !== pendingModification.actionId) return action;
+          return {
+            ...action,
+            commonParameters: pendingModification.proposedParameters,
+            consolidatedInstructions: pendingModification.proposedInstructions
+          };
+        })
+      };
+    });
+
+    setPendingModification(null);
+    setSelectedActionId(null);
+  }, [pendingModification, consolidatedActionSet]);
+
+  const handleRejectModification = useCallback(() => {
+    setPendingModification(null);
+  }, []);
+
+  // Get selected action for detail panel
+  const selectedAction = useMemo(() => {
+    if (!selectedActionId || !consolidatedActionSet) return null;
+    return consolidatedActionSet.actions.find(a => a.id === selectedActionId) || null;
+  }, [selectedActionId, consolidatedActionSet]);
 
   return (
     <div className="h-screen flex flex-col bg-gray-100">
@@ -976,15 +1126,21 @@ function App() {
         <div className="w-2/5 h-full">
           <TheoryEnginePanel
             graph={graph}
-            selectedNodeId={selectedNodeId}
             onClassifyNode={handleClassifyNode}
             actionSpace={actionSpace}
             onActionSpaceUpdate={setActionSpace}
             hypotheses={hypotheses}
-            onHypothesisGenerated={handleHypothesisGenerated}
+            onGenerateHypotheses={handleGenerateHypotheses}
+            isGeneratingHypothesis={isGeneratingHypothesis}
+            generationProgress={generationProgress}
             onRefreshHypothesis={handleRefreshHypothesis}
             onDeleteHypothesis={handleDeleteHypothesis}
             onExportHypothesis={handleExportHypothesis}
+            onRefineHypothesis={handleRefineHypothesis}
+            activeHypothesisId={activeHypothesisId}
+            onHypothesisSelect={handleHypothesisSelect}
+            consolidatedActionSet={consolidatedActionSet}
+            onConsolidatedActionSet={setConsolidatedActionSet}
           />
         </div>
 
@@ -992,19 +1148,59 @@ function App() {
         <div className="w-3/5 h-full flex flex-col">
           {/* Graph Canvas */}
           <div className="flex-1 relative">
-          <GraphCanvas
-            graph={graph}
-            selectedNodeId={selectedNodeId}
-            selectedNodeIds={consolidationMode ? selectedNodeIds : undefined}
-            consolidationMode={consolidationMode}
-            expandMode={expandMode}
-            onNodeSelect={handleNodeSelect}
-            onNodePositionsChange={handleNodePositionsChange}
-            immediateDownstream={immediateDownstream}
-            higherDownstream={higherDownstream}
-          />
+          {visualizationMode === 'causal' ? (
+            <GraphCanvas
+              graph={graph}
+              selectedNodeId={selectedNodeId}
+              selectedNodeIds={consolidationMode ? selectedNodeIds : undefined}
+              consolidationMode={consolidationMode}
+              expandMode={expandMode}
+              onNodeSelect={handleNodeSelect}
+              onNodePositionsChange={handleNodePositionsChange}
+              immediateDownstream={immediateDownstream}
+              higherDownstream={higherDownstream}
+              hypothesisHighlightedNodeIds={activeHypothesisNodeIds}
+            />
+          ) : (
+            consolidatedActionSet && (
+              <ActionSpaceCanvas
+                hypotheses={hypotheses.filter(h => h.status === 'active')}
+                consolidatedActions={consolidatedActionSet.actions}
+                selectedHypothesisId={activeHypothesisId}
+                selectedActionId={selectedActionId}
+                onHypothesisSelect={setActiveHypothesisId}
+                onActionSelect={setSelectedActionId}
+              />
+            )
+          )}
           {/* Top-right controls */}
           <div className="absolute top-4 right-4 flex flex-wrap items-center gap-2 max-w-md justify-end">
+            {/* Visualization Mode Toggle */}
+            <div className="flex bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <button
+                onClick={() => setVisualizationMode('causal')}
+                className={`px-3 py-1.5 text-sm font-medium ${
+                  visualizationMode === 'causal'
+                    ? 'bg-slate-700 text-white'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                Causal Graph
+              </button>
+              <button
+                onClick={() => setVisualizationMode('action-space')}
+                disabled={!consolidatedActionSet}
+                className={`px-3 py-1.5 text-sm font-medium ${
+                  visualizationMode === 'action-space'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed'
+                }`}
+                title={!consolidatedActionSet ? 'Consolidate actions first' : 'View action space'}
+              >
+                Action Space
+              </button>
+            </div>
+
             {/* New Graph button */}
             <button
               onClick={handleNewGraph}
@@ -1407,6 +1603,27 @@ function App() {
             setApiConfigured(isApiConfigured());
             setShowApiConfig(false);
           }}
+        />
+      )}
+
+      {/* Action Detail Panel */}
+      {selectedAction && visualizationMode === 'action-space' && (
+        <ActionDetailPanel
+          action={selectedAction}
+          hypotheses={hypotheses}
+          onClose={() => setSelectedActionId(null)}
+          onProposeModification={handleProposeModification}
+        />
+      )}
+
+      {/* Modification Confirm Modal */}
+      {pendingModification && (
+        <ModificationConfirmModal
+          modification={pendingModification}
+          hypotheses={hypotheses}
+          onConfirm={handleApplyModification}
+          onReject={handleRejectModification}
+          onClose={() => setPendingModification(null)}
         />
       )}
     </div>

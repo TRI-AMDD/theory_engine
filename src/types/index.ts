@@ -144,3 +144,116 @@ export interface Hypothesis {
   status: 'active' | 'outdated';
   outdatedReason?: string;
 }
+
+// Configuration for batch hypothesis generation
+export interface HypothesisGenerationConfig {
+  count: number;          // Number of hypotheses to generate (1-10)
+  diversityHint?: string; // Optional hint to encourage diverse hypotheses
+}
+
+// Result of batch hypothesis generation
+export interface HypothesisBatch {
+  id: string;
+  createdAt: string;
+  hypotheses: Hypothesis[];
+  config: HypothesisGenerationConfig;
+}
+
+// ============================================
+// Consolidated Action Types
+// ============================================
+
+// An action linked to multiple hypotheses
+export interface ConsolidatedAction {
+  id: string;
+  actionId: string;                    // Original action definition ID
+  actionName: string;
+  actionType: ActionDefinition['type'];
+  description: string;
+
+  // Aggregated from hypothesis action hooks
+  hypothesisLinks: {
+    hypothesisId: string;
+    parameters: Record<string, string>;
+    instructions: string;
+  }[];
+
+  // Utility score (higher = serves more hypotheses)
+  utilityScore: number;
+
+  // Merged parameters (common across hypotheses)
+  commonParameters: Record<string, string>;
+
+  // LLM-generated consolidated instructions
+  consolidatedInstructions: string;
+}
+
+export interface ConsolidatedActionSet {
+  id: string;
+  createdAt: string;
+  actions: ConsolidatedAction[];
+  sourceHypothesisIds: string[];
+  conditioningText?: string;
+}
+
+// ============================================
+// Action Space Visualization Types
+// ============================================
+
+// Visualization modes
+export type VisualizationMode = 'causal' | 'action-space';
+
+// Node types for action space graph
+export interface ActionSpaceNode {
+  id: string;
+  type: 'hypothesis' | 'action';
+  data: {
+    // For hypothesis nodes
+    hypothesis?: Hypothesis;
+    // For action nodes
+    action?: ConsolidatedAction;
+    // Common
+    label: string;
+    isHighlighted?: boolean;
+  };
+  position: { x: number; y: number };
+}
+
+export interface ActionSpaceEdge {
+  id: string;
+  source: string;  // hypothesis node ID
+  target: string;  // action node ID
+  animated?: boolean;
+}
+
+export interface ActionSpaceGraph {
+  nodes: ActionSpaceNode[];
+  edges: ActionSpaceEdge[];
+}
+
+// ============================================
+// Action Modification Types
+// ============================================
+
+// Proposed modification to an action's parameters or instructions
+export interface ActionModification {
+  id: string;
+  actionId: string;
+  originalParameters: Record<string, string>;
+  proposedParameters: Record<string, string>;
+  originalInstructions: string;
+  proposedInstructions: string;
+  rationale: string;
+  affectedHypothesisIds: string[];
+  status: 'pending' | 'applied' | 'rejected';
+}
+
+// Exported action for external use
+export interface ExportedAction {
+  name: string;
+  type: ActionDefinition['type'];
+  description: string;
+  parameters: Record<string, string>;
+  instructions: string;
+  sourceHypotheses: string[];  // Human-readable hypothesis summaries
+}

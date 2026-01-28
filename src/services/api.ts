@@ -1,5 +1,5 @@
 import { AzureOpenAI } from 'openai';
-import type { CausalNode, CausalEdge, CausalGraph, ActionSpace, Proposal, ExistingNodeProposal, ProposalConfig, WhyzenMetadata } from '../types';
+import type { CausalNode, CausalEdge, CausalGraph, ActionSpace, ActionDefinition, Proposal, ExistingNodeProposal, ProposalConfig, WhyzenMetadata, HypothesisGenerationConfig, Hypothesis, ConsolidatedAction, ConsolidatedActionSet, HypothesisActionHook } from '../types';
 
 // Token usage tracking
 export interface TokenUsage {
@@ -1334,7 +1334,7 @@ Respond with JSON only (no markdown):
     }
 
     return parsed as ExpansionProposal;
-  } catch (err) {
+  } catch {
     throw new Error(`Failed to parse expansion proposal: ${cleaned.slice(0, 100)}...`);
   }
 }
@@ -1663,6 +1663,7 @@ export interface HypothesisGenerationInput {
   observables: CausalNode[];
   desirables: CausalNode[];
   actionSpace: ActionSpace;
+  conditioningHint?: string;
 }
 
 export interface GeneratedHypothesis {
@@ -1760,10 +1761,15 @@ ${input.desirables.length > 0
   : 'None specified'}
 
 AVAILABLE VALIDATION ACTIONS:
-${input.actionSpace.actions.map(a =>
-  `- ${a.name} (${a.type}): ${a.description}\n  Parameters: ${a.parameterHints?.join(', ') || 'None'}`
-).join('\n')}
+${input.actionSpace.actions.length > 0 ? input.actionSpace.actions.map(a =>
+  `- ID: "${a.id}" | ${a.name} (${a.type}): ${a.description}\n  Parameters: ${a.parameterHints?.join(', ') || 'None'}`
+).join('\n') : 'No actions defined - skip actionHooks in response'}
+${input.conditioningHint ? `
+USER GUIDANCE:
+${input.conditioningHint}
 
+Please take the above guidance into account when generating the hypothesis.
+` : ''}
 Generate a hypothesis with:
 1. PRESCRIPTION: Specific modifications to the intervenable variables
 2. OBSERVABLE_PREDICTIONS: What changes will be observed
@@ -1782,13 +1788,15 @@ Respond in JSON format:
   "story": "...",
   "actionHooks": [
     {
-      "actionId": "...",
+      "actionId": "use exact ID from AVAILABLE VALIDATION ACTIONS above",
       "parameters": { "param1": "value1" },
       "instructions": "..."
     }
   ],
   "critique": "..."
-}`;
+}
+
+IMPORTANT: For actionHooks, use the exact "ID" values from AVAILABLE VALIDATION ACTIONS. If no actions are available, return an empty array for actionHooks.`;
 
   const response = await client.chat.completions.create({
     model: deploymentName,
@@ -1818,6 +1826,261 @@ export type GraphModificationAction =
   | { type: 'remove_edge'; source: string; target: string }
   | { type: 'expand_node'; nodeId: string; hint?: string }
   | { type: 'error'; message: string };
+
+// ============================================
+// Hypothesis Refinement
+// ============================================
+
+export interface HypothesisRefinementInput {
+  hypothesis: {
+    prescription: string;
+    predictions: { observables: string; desirables: string };
+    story: string;
+    critique: string;
+  };
+  userFeedback: string;
+  experimentalContext: string;
+  nodeNames: string[];
+}
+
+export interface RefinedHypothesis {
+  prescription: string;
+  predictions: { observables: string; desirables: string };
+  story: string;
+  critique: string;
+  refinementNote: string;
+}
+
+export async function refineHypothesis(input: HypothesisRefinementInput): Promise<RefinedHypothesis> {
+  if (!endpoint || !apiKey) {
+    throw new Error('Azure OpenAI not configured');
+  }
+
+  const prompt = `You are refining a scientific hypothesis based on user feedback.
+
+EXPERIMENTAL CONTEXT:
+${input.experimentalContext}
+
+CURRENT HYPOTHESIS:
+Prescription: ${input.hypothesis.prescription}
+Observable Predictions: ${input.hypothesis.predictions.observables}
+Desirable Predictions: ${input.hypothesis.predictions.desirables}
+Causal Story: ${input.hypothesis.story}
+Critique: ${input.hypothesis.critique}
+
+GRAPH NODES: ${input.nodeNames.join(', ')}
+
+USER FEEDBACK/QUESTION:
+${input.userFeedback}
+
+Based on the user's feedback, provide a refined hypothesis. If it's a question, answer it and adjust the hypothesis accordingly. If it's a modification request, implement it.
+
+Respond in JSON format:
+{
+  "prescription": "Updated prescription...",
+  "predictions": {
+    "observables": "Updated observable predictions...",
+    "desirables": "Updated desirable predictions..."
+  },
+  "story": "Updated causal story...",
+  "critique": "Updated critique...",
+  "refinementNote": "Brief note about what was changed based on feedback"
+}`;
+
+  const response = await client.chat.completions.create({
+    model: deploymentName,
+    messages: [{ role: 'user', content: prompt }],
+    temperature: 0.7,
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) throw new Error('No response from LLM');
+
+  addTokenUsage(response.usage);
+
+  const cleaned = content.replace(/```json\n?|\n?```/g, '').trim();
+  return JSON.parse(cleaned) as RefinedHypothesis;
+}
+
+// ============================================
+// Multi-Hypothesis Generation
+// ============================================
+
+export async function generateMultipleHypotheses(
+  intervenables: CausalNode[],
+  observables: CausalNode[],
+  desirables: CausalNode[],
+  actionSpace: ActionSpace,
+  graph: CausalGraph,
+  config: HypothesisGenerationConfig,
+  onProgress?: (completed: number, total: number) => void,
+  onHypothesisGenerated?: (hypothesis: Hypothesis) => void
+): Promise<Hypothesis[]> {
+  const hypotheses: Hypothesis[] = [];
+  const existingPrescriptions: string[] = [];
+
+  for (let i = 0; i < config.count; i++) {
+    // Build diversity prompt based on existing hypotheses
+    const diversityPrompt = existingPrescriptions.length > 0
+      ? `\n\nIMPORTANT: Generate a hypothesis that is DIFFERENT from these already generated:\n${existingPrescriptions.map((p, idx) => `${idx + 1}. ${p}`).join('\n')}\n\nFocus on a different causal pathway, mechanism, or intervention strategy.`
+      : '';
+
+    const diversityHint = config.diversityHint
+      ? `${config.diversityHint}${diversityPrompt}`
+      : diversityPrompt;
+
+    const generated = await generateHypothesis({
+      experimentalContext: graph.experimentalContext,
+      graph,
+      intervenables,
+      observables,
+      desirables,
+      actionSpace,
+      conditioningHint: diversityHint || undefined,
+    });
+
+    const hypothesis: Hypothesis = {
+      id: `hyp-${Date.now()}-${i}`,
+      createdAt: new Date().toISOString(),
+      intervenables: intervenables.map(n => n.id),
+      observables: observables.map(n => n.id),
+      desirables: desirables.map(n => n.id),
+      prescription: generated.prescription,
+      predictions: generated.predictions,
+      story: generated.story,
+      actionHooks: generated.actionHooks.map(hook => ({
+        ...hook,
+        actionName: actionSpace.actions.find(a => a.id === hook.actionId)?.name || 'Unknown',
+      })),
+      critique: generated.critique,
+      status: 'active'
+    };
+
+    hypotheses.push(hypothesis);
+    existingPrescriptions.push(generated.prescription);
+
+    // Notify immediately when each hypothesis is generated
+    if (onHypothesisGenerated) {
+      onHypothesisGenerated(hypothesis);
+    }
+
+    if (onProgress) {
+      onProgress(i + 1, config.count);
+    }
+  }
+
+  return hypotheses;
+}
+
+// ============================================
+// Action Consolidation
+// ============================================
+
+async function generateConsolidatedInstructions(
+  action: ActionDefinition,
+  instructionsList: string[],
+  conditioningText?: string
+): Promise<string> {
+  const prompt = `Given an action "${action.name}" (${action.type}) with the following description:
+${action.description}
+
+Multiple hypotheses have generated these specific instructions for executing this action:
+${instructionsList.map((inst, i) => `${i + 1}. ${inst}`).join('\n')}
+
+${conditioningText ? `User guidance: ${conditioningText}\n` : ''}
+Generate a SINGLE consolidated set of instructions that would satisfy all the above requirements. Focus on:
+1. Finding common elements
+2. Noting any hypothesis-specific variations
+3. Providing a clear, actionable execution plan
+
+Respond with just the consolidated instructions (2-4 sentences).`;
+
+  const response = await callLLM(prompt, 'You are a scientific methodology expert consolidating action plans.', 0.3, 500);
+  return response.trim();
+}
+
+export async function consolidateHypothesisActions(
+  hypotheses: Hypothesis[],
+  actionSpace: ActionSpace,
+  conditioningText?: string
+): Promise<ConsolidatedActionSet> {
+  // Collect all action hooks from all hypotheses
+  const actionHookMap = new Map<string, {
+    action: ActionDefinition;
+    hooks: { hypothesisId: string; hook: HypothesisActionHook }[];
+  }>();
+
+  for (const hyp of hypotheses) {
+    for (const hook of hyp.actionHooks) {
+      const existing = actionHookMap.get(hook.actionId);
+      const action = actionSpace.actions.find(a => a.id === hook.actionId);
+      if (!action) continue;
+
+      if (existing) {
+        existing.hooks.push({ hypothesisId: hyp.id, hook });
+      } else {
+        actionHookMap.set(hook.actionId, {
+          action,
+          hooks: [{ hypothesisId: hyp.id, hook }]
+        });
+      }
+    }
+  }
+
+  // Build consolidated actions
+  const consolidatedActions: ConsolidatedAction[] = [];
+
+  for (const [actionId, data] of actionHookMap) {
+    // Find common parameters
+    const allParams = data.hooks.map(h => h.hook.parameters);
+    const commonParams: Record<string, string> = {};
+
+    if (allParams.length > 0) {
+      const firstParams = allParams[0];
+      for (const [key, value] of Object.entries(firstParams)) {
+        const isCommon = allParams.every(p => p[key] === value);
+        if (isCommon) {
+          commonParams[key] = value;
+        }
+      }
+    }
+
+    // Generate consolidated instructions via LLM
+    const instructionsList = data.hooks.map(h => h.hook.instructions);
+    const consolidatedInstructions = await generateConsolidatedInstructions(
+      data.action,
+      instructionsList,
+      conditioningText
+    );
+
+    consolidatedActions.push({
+      id: `ca-${Date.now()}-${actionId}`,
+      actionId,
+      actionName: data.action.name,
+      actionType: data.action.type,
+      description: data.action.description,
+      hypothesisLinks: data.hooks.map(h => ({
+        hypothesisId: h.hypothesisId,
+        parameters: h.hook.parameters,
+        instructions: h.hook.instructions
+      })),
+      utilityScore: data.hooks.length,
+      commonParameters: commonParams,
+      consolidatedInstructions
+    });
+  }
+
+  // Sort by utility score (descending)
+  consolidatedActions.sort((a, b) => b.utilityScore - a.utilityScore);
+
+  return {
+    id: `cas-${Date.now()}`,
+    createdAt: new Date().toISOString(),
+    actions: consolidatedActions,
+    sourceHypothesisIds: hypotheses.map(h => h.id),
+    conditioningText
+  };
+}
 
 export async function parseGraphModification(
   command: string,

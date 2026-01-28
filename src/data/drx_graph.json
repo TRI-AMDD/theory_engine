@@ -1,0 +1,202 @@
+{
+  "experimentalContext": "This causal model represents factors affecting electrochemical performance of disordered rocksalt (DRX) cathode materials for lithium-ion batteries. DRX materials feature a cation-disordered structure with excess lithium, enabling lithium percolation through 0-TM channels. Key performance metrics include discharge capacity (mAh/g), capacity retention over cycling, and rate capability. Performance depends on composition (Li content, redox-active transition metals, charge-compensating metals, fluorine doping), electrochemical test parameters (current density, voltage window), and mechanistic factors (percolation network, short-range order, transition metal migration).",
+  "nodes": [
+    {
+      "id": "discharge_capacity",
+      "variableName": "discharge_capacity",
+      "displayName": "Discharge Capacity",
+      "description": "Measured discharge capacity normalized by active material mass (mAh/g). Primary performance metric for battery electrode materials.",
+      "position": { "x": 800, "y": 300 }
+    },
+    {
+      "id": "capacity_retention",
+      "variableName": "capacity_retention",
+      "displayName": "Capacity Retention",
+      "description": "Fraction of initial capacity retained after cycling (%). Measures long-term cycling stability and degradation resistance.",
+      "position": { "x": 800, "y": 450 }
+    },
+    {
+      "id": "rate_capability",
+      "variableName": "rate_capability",
+      "displayName": "Rate Capability",
+      "description": "Ability to deliver capacity at high current rates. Ratio of capacity at high C-rate to capacity at low C-rate.",
+      "position": { "x": 800, "y": 150 }
+    },
+    {
+      "id": "li_content",
+      "variableName": "li_content",
+      "displayName": "Lithium Content",
+      "description": "Li stoichiometry (x in Lix). Range: 1.0-1.333. Higher Li-excess enables more percolation pathways but requires charge compensation.",
+      "position": { "x": 50, "y": 100 }
+    },
+    {
+      "id": "redox_tm_content",
+      "variableName": "redox_tm_content",
+      "displayName": "Redox TM Content",
+      "description": "Total content of redox-active transition metals (Mn, Cr, V, Fe, Co, Ni). These provide electrochemical capacity via oxidation state changes.",
+      "position": { "x": 50, "y": 250 }
+    },
+    {
+      "id": "mn_content",
+      "variableName": "mn_content",
+      "displayName": "Manganese Content",
+      "description": "Mn stoichiometry (Mn2+/4+ redox). Primary redox element, earth-abundant, provides stable capacity.",
+      "position": { "x": 150, "y": 350 }
+    },
+    {
+      "id": "cr_content",
+      "variableName": "cr_content",
+      "displayName": "Chromium Content",
+      "description": "Cr stoichiometry (Cr3+/6+ redox). Enables high-rate capability but prone to TM migration.",
+      "position": { "x": 150, "y": 450 }
+    },
+    {
+      "id": "v_content",
+      "variableName": "v_content",
+      "displayName": "Vanadium Content",
+      "description": "V stoichiometry (V3+/5+ redox). Low-voltage redox, prone to TM migration into Li layer.",
+      "position": { "x": 150, "y": 550 }
+    },
+    {
+      "id": "inert_tm_content",
+      "variableName": "inert_tm_content",
+      "displayName": "Inert TM Content",
+      "description": "Total content of charge-compensating transition metals (Ti4+, Zr4+, Nb5+, Mo6+). Stabilize structure and compensate Li-excess charge.",
+      "position": { "x": 50, "y": 400 }
+    },
+    {
+      "id": "f_content",
+      "variableName": "f_content",
+      "displayName": "Fluorine Content",
+      "description": "F stoichiometry in oxyfluorides (0-1.333). Lower anion valence accommodates more Li-excess, enhances surface stability, modifies short-range order.",
+      "position": { "x": 50, "y": 550 }
+    },
+    {
+      "id": "current_density",
+      "variableName": "current_density",
+      "displayName": "Current Density",
+      "description": "Test current normalized by mass (mA/g). Range: 5-20000 mA/g. Higher currents test kinetic limitations and rate capability.",
+      "position": { "x": 400, "y": 50 }
+    },
+    {
+      "id": "voltage_high",
+      "variableName": "voltage_high",
+      "displayName": "High Voltage Cutoff",
+      "description": "Upper voltage limit during charging (V). Range: 4.0-5.0V. Higher cutoffs access more capacity but risk electrolyte decomposition and oxygen loss.",
+      "position": { "x": 400, "y": 200 }
+    },
+    {
+      "id": "voltage_low",
+      "variableName": "voltage_low",
+      "displayName": "Low Voltage Cutoff",
+      "description": "Lower voltage limit during discharge (V). Range: 1.0-2.5V. Lower cutoffs access more capacity but may cause irreversible structural changes.",
+      "position": { "x": 400, "y": 350 }
+    },
+    {
+      "id": "cycle_number",
+      "variableName": "cycle_number",
+      "displayName": "Cycle Number",
+      "description": "Number of charge-discharge cycles (1-891). More cycles reveal long-term degradation mechanisms.",
+      "position": { "x": 400, "y": 500 }
+    },
+    {
+      "id": "li_percolation",
+      "variableName": "li_percolation",
+      "displayName": "Li Percolation Network",
+      "description": "Connectivity of 0-TM (zero transition metal) channels for Li diffusion. Requires sufficient Li-excess (typically >1.09) to form percolating network.",
+      "position": { "x": 250, "y": 150 }
+    },
+    {
+      "id": "short_range_order",
+      "variableName": "short_range_order",
+      "displayName": "Short-Range Order",
+      "description": "Local cation ordering in the disordered structure. Affects Li diffusion barriers and percolation pathway tortuosity.",
+      "position": { "x": 250, "y": 250 }
+    },
+    {
+      "id": "cation_redox",
+      "variableName": "cation_redox",
+      "displayName": "Cation Redox Capacity",
+      "description": "Capacity contribution from transition metal oxidation/reduction. Depends on TM content and accessible oxidation states.",
+      "position": { "x": 550, "y": 250 }
+    },
+    {
+      "id": "oxygen_redox",
+      "variableName": "oxygen_redox",
+      "displayName": "Oxygen Redox Activity",
+      "description": "Anionic redox contribution from O2-/O- oxidation at high voltages. Provides extra capacity but can cause O2 loss and structural degradation.",
+      "position": { "x": 550, "y": 350 }
+    },
+    {
+      "id": "tm_migration",
+      "variableName": "tm_migration",
+      "displayName": "TM Migration",
+      "description": "Movement of transition metal ions into Li layer during cycling. Blocks Li diffusion pathways, causes voltage fade and capacity loss.",
+      "position": { "x": 550, "y": 450 }
+    },
+    {
+      "id": "structural_stability",
+      "variableName": "structural_stability",
+      "displayName": "Structural Stability",
+      "description": "Resistance to irreversible structural changes during cycling. Affected by TM migration, oxygen loss, and Li/vacancy ordering.",
+      "position": { "x": 550, "y": 550 }
+    },
+    {
+      "id": "electrolyte_stability",
+      "variableName": "electrolyte_stability",
+      "displayName": "Electrolyte Stability",
+      "description": "Resistance to electrolyte decomposition at electrode surface. Compromised at high voltages (>4.5V) causing SEI growth and impedance rise.",
+      "position": { "x": 650, "y": 150 }
+    },
+    {
+      "id": "charge_balance",
+      "variableName": "charge_balance",
+      "displayName": "Charge Balance",
+      "description": "Electroneutrality constraint requiring compensation for Li-excess. Met by high-valent inert TMs (Ti4+, Nb5+) or F substitution.",
+      "position": { "x": 150, "y": 200 }
+    }
+  ],
+  "edges": [
+    { "id": "e1", "source": "li_content", "target": "li_percolation" },
+    { "id": "e2", "source": "li_content", "target": "charge_balance" },
+    { "id": "e3", "source": "li_percolation", "target": "discharge_capacity" },
+    { "id": "e4", "source": "li_percolation", "target": "rate_capability" },
+
+    { "id": "e5", "source": "redox_tm_content", "target": "cation_redox" },
+    { "id": "e6", "source": "mn_content", "target": "redox_tm_content" },
+    { "id": "e7", "source": "cr_content", "target": "redox_tm_content" },
+    { "id": "e8", "source": "v_content", "target": "redox_tm_content" },
+    { "id": "e9", "source": "cation_redox", "target": "discharge_capacity" },
+
+    { "id": "e10", "source": "cr_content", "target": "tm_migration" },
+    { "id": "e11", "source": "v_content", "target": "tm_migration" },
+    { "id": "e12", "source": "tm_migration", "target": "capacity_retention" },
+    { "id": "e13", "source": "tm_migration", "target": "li_percolation" },
+
+    { "id": "e14", "source": "inert_tm_content", "target": "charge_balance" },
+    { "id": "e15", "source": "inert_tm_content", "target": "structural_stability" },
+    { "id": "e16", "source": "structural_stability", "target": "capacity_retention" },
+
+    { "id": "e17", "source": "f_content", "target": "charge_balance" },
+    { "id": "e18", "source": "f_content", "target": "short_range_order" },
+    { "id": "e19", "source": "f_content", "target": "electrolyte_stability" },
+    { "id": "e20", "source": "short_range_order", "target": "li_percolation" },
+
+    { "id": "e21", "source": "voltage_high", "target": "oxygen_redox" },
+    { "id": "e22", "source": "voltage_high", "target": "electrolyte_stability" },
+    { "id": "e23", "source": "oxygen_redox", "target": "discharge_capacity" },
+    { "id": "e24", "source": "oxygen_redox", "target": "structural_stability" },
+
+    { "id": "e25", "source": "voltage_low", "target": "discharge_capacity" },
+    { "id": "e26", "source": "voltage_low", "target": "structural_stability" },
+
+    { "id": "e27", "source": "current_density", "target": "discharge_capacity" },
+    { "id": "e28", "source": "current_density", "target": "rate_capability" },
+
+    { "id": "e29", "source": "cycle_number", "target": "capacity_retention" },
+    { "id": "e30", "source": "cycle_number", "target": "tm_migration" },
+
+    { "id": "e31", "source": "electrolyte_stability", "target": "capacity_retention" },
+    { "id": "e32", "source": "charge_balance", "target": "structural_stability" }
+  ]
+}

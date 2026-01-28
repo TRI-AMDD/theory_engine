@@ -405,7 +405,7 @@ If no merges are needed, respond with:
     }
 
     // Apply merges
-    let newGraph = { ...graph, nodes: [...graph.nodes], edges: [...graph.edges] };
+    const newGraph = { ...graph, nodes: [...graph.nodes], edges: [...graph.edges] };
 
     for (const merge of parsed.mergedNodes) {
       // Find the node to keep
@@ -478,7 +478,7 @@ export async function buildGraphFromData(
 
   let currentGraph: CausalGraph | null = null;
   let critiqueFeedback: string[] = [];
-  let allFeedback: string[] = [];
+  const allFeedback: string[] = [];
 
   for (let i = 0; i < config.iterations; i++) {
     const isFirst = i === 0;
@@ -600,7 +600,7 @@ If all edges are justified, return: {"edgesToRemove": [], "reasoning": "All edge
       parsed.edgesToRemove.map((e: { source: string; target: string }) => `${e.source}->${e.target}`)
     );
 
-    let newGraph = {
+    const newGraph = {
       ...graph,
       edges: graph.edges.filter(e => !edgesToRemove.has(`${e.source}->${e.target}`))
     };

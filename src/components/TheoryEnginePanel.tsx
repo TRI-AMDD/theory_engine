@@ -1,39 +1,48 @@
-import type { CausalGraph, NodeClassification, ActionSpace, Hypothesis } from '../types';
+import type { CausalGraph, NodeClassification, ActionSpace, Hypothesis, ConsolidatedActionSet } from '../types';
 import { ActionSpaceEditor } from './ActionSpaceEditor';
 import { HypothesisGenerator } from './HypothesisGenerator';
 import { HypothesisProposals } from './HypothesisProposals';
+import { ActionConsolidationPanel } from './ActionConsolidationPanel';
+import { QuickClassifyPanel } from './QuickClassifyPanel';
 
 interface TheoryEnginePanelProps {
   graph: CausalGraph;
-  selectedNodeId: string | null;
   onClassifyNode: (nodeId: string, classification: NodeClassification, isDesirable?: boolean) => void;
   actionSpace: ActionSpace;
   onActionSpaceUpdate: (actionSpace: ActionSpace) => void;
   hypotheses: Hypothesis[];
-  onHypothesisGenerated: (hypothesis: Hypothesis) => void;
+  onGenerateHypotheses: (hint: string, count: number) => void;
+  isGeneratingHypothesis: boolean;
+  generationProgress: { current: number; total: number } | null;
   onRefreshHypothesis: (hypothesisId: string) => void;
   onDeleteHypothesis: (hypothesisId: string) => void;
   onExportHypothesis: (hypothesis: Hypothesis) => void;
+  onRefineHypothesis: (hypothesisId: string, feedback: string) => Promise<void>;
+  activeHypothesisId: string | null;
+  onHypothesisSelect: (hypothesisId: string | null) => void;
+  consolidatedActionSet: ConsolidatedActionSet | null;
+  onConsolidatedActionSet: (actionSet: ConsolidatedActionSet) => void;
 }
 
 export function TheoryEnginePanel({
   graph,
-  selectedNodeId,
   onClassifyNode,
   actionSpace,
   onActionSpaceUpdate,
   hypotheses,
-  onHypothesisGenerated,
+  onGenerateHypotheses,
+  isGeneratingHypothesis,
+  generationProgress,
   onRefreshHypothesis,
   onDeleteHypothesis,
-  onExportHypothesis
+  onExportHypothesis,
+  onRefineHypothesis,
+  activeHypothesisId,
+  onHypothesisSelect,
+  consolidatedActionSet,
+  onConsolidatedActionSet
 }: TheoryEnginePanelProps) {
-  const selectedNode = graph.nodes.find(n => n.id === selectedNodeId);
-
-  // Group nodes by classification
-  const intervenables = graph.nodes.filter(n => n.classification === 'intervenable');
-  const observables = graph.nodes.filter(n => n.classification === 'observable');
-  const desirables = graph.nodes.filter(n => n.isDesirable);
+  const nodeNames = graph.nodes.map(n => n.displayName);
 
   return (
     <div className="h-full flex flex-col bg-gray-50 border-r border-gray-200">
@@ -42,82 +51,12 @@ export function TheoryEnginePanel({
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {/* Node Classification Section */}
+        {/* Quick Classify Panel */}
         <div className="p-4 border-b border-gray-200">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">Node Classification</h2>
-
-          {selectedNode ? (
-            <div className="space-y-3">
-              <p className="text-sm text-gray-600">
-                Selected: <span className="font-medium">{selectedNode.displayName}</span>
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => onClassifyNode(selectedNode.id, 'intervenable')}
-                  className={`px-3 py-1 text-xs rounded ${
-                    selectedNode.classification === 'intervenable'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  ▲ Intervenable
-                </button>
-                <button
-                  onClick={() => onClassifyNode(selectedNode.id, 'observable')}
-                  className={`px-3 py-1 text-xs rounded ${
-                    selectedNode.classification === 'observable'
-                      ? 'bg-green-600 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  ● Observable
-                </button>
-                <button
-                  onClick={() => onClassifyNode(selectedNode.id, null, !selectedNode.isDesirable)}
-                  className={`px-3 py-1 text-xs rounded ${
-                    selectedNode.isDesirable
-                      ? 'bg-yellow-500 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  ★ Desirable
-                </button>
-                <button
-                  onClick={() => onClassifyNode(selectedNode.id, null, false)}
-                  className="px-3 py-1 text-xs rounded bg-gray-100 text-gray-500 hover:bg-gray-200"
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-gray-400">Select a node to classify</p>
-          )}
-        </div>
-
-        {/* Classification Summary */}
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">Classified Nodes</h2>
-          <div className="space-y-2 text-xs">
-            <div>
-              <span className="text-blue-600 font-medium">▲ Intervenables:</span>{' '}
-              {intervenables.length > 0
-                ? intervenables.map(n => n.displayName).join(', ')
-                : <span className="text-gray-400">None</span>}
-            </div>
-            <div>
-              <span className="text-green-600 font-medium">● Observables:</span>{' '}
-              {observables.length > 0
-                ? observables.map(n => n.displayName).join(', ')
-                : <span className="text-gray-400">None</span>}
-            </div>
-            <div>
-              <span className="text-yellow-600 font-medium">★ Desirables:</span>{' '}
-              {desirables.length > 0
-                ? desirables.map(n => n.displayName).join(', ')
-                : <span className="text-gray-400">None</span>}
-            </div>
-          </div>
+          <QuickClassifyPanel
+            nodes={graph.nodes}
+            onClassifyNode={onClassifyNode}
+          />
         </div>
 
         {/* Action Space Editor */}
@@ -133,20 +72,52 @@ export function TheoryEnginePanel({
           <HypothesisGenerator
             graph={graph}
             actionSpace={actionSpace}
-            onHypothesisGenerated={onHypothesisGenerated}
+            onGenerate={onGenerateHypotheses}
+            isGenerating={isGeneratingHypothesis}
           />
+
+          {/* Generation Progress */}
+          {generationProgress && (
+            <div className="mt-3 p-2 bg-blue-50 rounded-lg">
+              <div className="text-sm text-blue-700 mb-1">
+                Generating hypothesis {generationProgress.current} of {generationProgress.total}...
+              </div>
+              <div className="w-full bg-blue-200 rounded-full h-2">
+                <div
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${(generationProgress.current / generationProgress.total) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Hypothesis Proposals */}
-        <div className="p-4">
+        <div className="p-4 border-b border-gray-200">
           <HypothesisProposals
             hypotheses={hypotheses}
             graph={graph}
+            nodeNames={nodeNames}
             onRefresh={onRefreshHypothesis}
             onDelete={onDeleteHypothesis}
             onExport={onExportHypothesis}
+            onRefine={onRefineHypothesis}
+            onHypothesisSelect={onHypothesisSelect}
+            activeHypothesisId={activeHypothesisId}
           />
         </div>
+
+        {/* Action Consolidation - only show with 2+ hypotheses */}
+        {hypotheses.filter(h => h.status === 'active').length >= 2 && (
+          <div className="p-4">
+            <ActionConsolidationPanel
+              hypotheses={hypotheses}
+              actionSpace={actionSpace}
+              onConsolidated={onConsolidatedActionSet}
+              existingActionSet={consolidatedActionSet}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,36 +1,61 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { Hypothesis, CausalGraph } from '../types';
+import { highlightNodeNames, buildNodeHighlightInfo } from '../utils/textHighlight';
 
 interface HypothesisCardProps {
   hypothesis: Hypothesis;
   graph: CausalGraph;
+  nodeNames: string[];
   onRefresh: (hypothesisId: string) => void;
   onDelete: (hypothesisId: string) => void;
   onExport: (hypothesis: Hypothesis) => void;
+  onRefine: (hypothesisId: string, feedback: string) => Promise<void>;
+  onSelect?: (hypothesisId: string | null) => void;
+  isActive?: boolean;
 }
 
 export function HypothesisCard({
   hypothesis,
   graph,
+  nodeNames,
   onRefresh,
   onDelete,
-  onExport
+  onExport,
+  onRefine,
+  onSelect,
+  isActive
 }: HypothesisCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [feedbackInput, setFeedbackInput] = useState('');
+  const [isRefining, setIsRefining] = useState(false);
 
   const getNodeName = (id: string) =>
     graph.nodes.find(n => n.id === id)?.displayName || 'Unknown';
+
+  // Build highlight info with classification data
+  const nodeHighlightInfo = useMemo(
+    () => buildNodeHighlightInfo(graph.nodes),
+    [graph.nodes]
+  );
+
+  const highlight = (text: string) => highlightNodeNames(text, nodeNames, nodeHighlightInfo);
 
   const isOutdated = hypothesis.status === 'outdated';
 
   return (
     <div className={`rounded border ${
-      isOutdated ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'
+      isActive
+        ? 'border-blue-400 border-l-4 bg-blue-50'
+        : isOutdated ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'
     }`}>
       {/* Header */}
       <div
         className="p-3 cursor-pointer"
-        onClick={() => setExpanded(!expanded)}
+        onClick={() => {
+          const newExpanded = !expanded;
+          setExpanded(newExpanded);
+          onSelect?.(newExpanded ? hypothesis.id : null);
+        }}
       >
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -44,8 +69,8 @@ export function HypothesisCard({
                 {new Date(hypothesis.createdAt).toLocaleString()}
               </span>
             </div>
-            <p className="text-sm font-medium text-gray-800 mt-1 line-clamp-2">
-              {hypothesis.prescription}
+            <p className={`text-sm font-medium text-gray-800 mt-1 ${expanded ? '' : 'line-clamp-2'}`}>
+              {highlight(hypothesis.prescription)}
             </p>
           </div>
           <span className="text-gray-400 text-sm ml-2">
@@ -77,12 +102,12 @@ export function HypothesisCard({
           <div className="space-y-2">
             <div>
               <span className="text-xs font-medium text-gray-600">Observable Predictions:</span>
-              <p className="text-sm text-gray-700">{hypothesis.predictions.observables}</p>
+              <p className="text-sm text-gray-700">{highlight(hypothesis.predictions.observables)}</p>
             </div>
             {hypothesis.predictions.desirables && (
               <div>
                 <span className="text-xs font-medium text-gray-600">Desirable Predictions:</span>
-                <p className="text-sm text-gray-700">{hypothesis.predictions.desirables}</p>
+                <p className="text-sm text-gray-700">{highlight(hypothesis.predictions.desirables)}</p>
               </div>
             )}
           </div>
@@ -90,7 +115,7 @@ export function HypothesisCard({
           {/* Story */}
           <div>
             <span className="text-xs font-medium text-gray-600">Causal Story:</span>
-            <p className="text-sm text-gray-700 italic">{hypothesis.story}</p>
+            <p className="text-sm text-gray-700 italic">{highlight(hypothesis.story)}</p>
           </div>
 
           {/* Action Hooks */}
@@ -120,7 +145,7 @@ export function HypothesisCard({
           {/* Critique */}
           <div>
             <span className="text-xs font-medium text-gray-600">Critique:</span>
-            <p className="text-sm text-red-700">{hypothesis.critique}</p>
+            <p className="text-sm text-red-700">{highlight(hypothesis.critique)}</p>
           </div>
 
           {/* Outdated reason */}
@@ -129,6 +154,39 @@ export function HypothesisCard({
               Outdated because: {hypothesis.outdatedReason}
             </p>
           )}
+
+          {/* Follow-up / Refinement */}
+          <div className="pt-2 border-t border-gray-100">
+            <label className="text-xs font-medium text-gray-600 block mb-1">
+              Ask a question or suggest changes:
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={feedbackInput}
+                onChange={e => setFeedbackInput(e.target.value)}
+                placeholder="e.g., 'What if we increase temperature?' or 'Focus more on the catalyst'"
+                className="flex-1 text-sm px-2 py-1 border border-gray-300 rounded"
+                disabled={isRefining}
+              />
+              <button
+                onClick={async () => {
+                  if (!feedbackInput.trim()) return;
+                  setIsRefining(true);
+                  try {
+                    await onRefine(hypothesis.id, feedbackInput);
+                    setFeedbackInput('');
+                  } finally {
+                    setIsRefining(false);
+                  }
+                }}
+                disabled={!feedbackInput.trim() || isRefining}
+                className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300"
+              >
+                {isRefining ? '...' : 'Refine'}
+              </button>
+            </div>
+          </div>
 
           {/* Actions */}
           <div className="flex gap-2 pt-2 border-t border-gray-100">
