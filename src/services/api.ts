@@ -1,10 +1,7 @@
 import { AzureOpenAI } from 'openai';
 import type { CausalNode, CausalEdge, CausalGraph, ActionSpace, ActionDefinition, Proposal, ExistingNodeProposal, ProposalConfig, WhyzenMetadata, HypothesisGenerationConfig, Hypothesis, ConsolidatedAction, ConsolidatedActionSet, HypothesisActionHook } from '../types';
-import {
-  getSimulationParameterContext,
-  getStructureGenerationContext,
-  ACTION_PARAMETER_TEMPLATES
-} from '../data/computationalChemistryContext';
+// Computational chemistry context available for future action generation enhancement
+// import { getSimulationParameterContext, getStructureGenerationContext, ACTION_PARAMETER_TEMPLATES } from '../data/computationalChemistryContext';
 
 // Token usage tracking
 export interface TokenUsage {
@@ -952,9 +949,7 @@ export async function evaluateExistingNodes(
   experimentalContext: string,
   selectedNode: CausalNode,
   candidateNodes: CausalNode[],
-  direction: 'upstream' | 'downstream',
-  _allNodes: CausalNode[],
-  _allEdges: { source: string; target: string }[]
+  direction: 'upstream' | 'downstream'
 ): Promise<ExistingNodeProposal[]> {
   if (!endpoint || !apiKey) {
     throw new Error('Azure OpenAI not configured');

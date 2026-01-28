@@ -345,6 +345,7 @@ function GraphCanvasInner({ graph, selectedNodeId, selectedNodeIds, consolidatio
   // Reset layout flag when graph structure changes (e.g., preset load, node added)
   useEffect(() => {
     if (graphStructureChanged || isInitialMount) {
+       
       setHasInitialLayout(false);
     }
   }, [graphStructureChanged, isInitialMount]);
@@ -354,9 +355,11 @@ function GraphCanvasInner({ graph, selectedNodeId, selectedNodeIds, consolidatio
     if (!hasInitialLayout && nodes.length > 0) {
       const { nodes: layoutedNodes } = getLayoutedElements(nodes, edges, 'TB');
       setNodes(layoutedNodes);
+       
       setHasInitialLayout(true);
       setPrevGraphSignature(graphSignature);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodes.length, edges, hasInitialLayout, setNodes, graphSignature]);
 
   // Handle node position changes (drag and drop)

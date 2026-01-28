@@ -608,9 +608,7 @@ function App() {
         graph.experimentalContext,
         selectedNode,
         candidateNodes,
-        direction,
-        graph.nodes,
-        graph.edges
+        direction
       );
 
       setExistingNodeProposals(prev => [
