@@ -1,5 +1,10 @@
 import { AzureOpenAI } from 'openai';
 import type { CausalNode, CausalEdge, CausalGraph, ActionSpace, ActionDefinition, Proposal, ExistingNodeProposal, ProposalConfig, WhyzenMetadata, HypothesisGenerationConfig, Hypothesis, ConsolidatedAction, ConsolidatedActionSet, HypothesisActionHook } from '../types';
+import {
+  getSimulationParameterContext,
+  getStructureGenerationContext,
+  ACTION_PARAMETER_TEMPLATES
+} from '../data/computationalChemistryContext';
 
 // Token usage tracking
 export interface TokenUsage {

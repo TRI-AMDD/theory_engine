@@ -1705,8 +1705,8 @@ export const experimentPresets: ExperimentPreset[] = [
   }
 ];
 
-// Default export - Whyzen RDE is now the default
-export const initialGraph: CausalGraph = experimentPresets[0].graph;
-export const experimentalContext = whyzenRdeContext;
-export const initialNodes = whyzenRdeNodes;
-export const initialEdges = whyzenRdeEdges;
+// Default export - DRX Cathode Experiments is the default
+export const initialGraph: CausalGraph = experimentPresets[9].graph;
+export const experimentalContext = drxGraphRaw.experimentalContext;
+export const initialNodes = drxGraphRaw.nodes as CausalNode[];
+export const initialEdges = drxGraphRaw.edges as CausalEdge[];
