@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HypothesisCard } from '../HypothesisCard'
 import type { Hypothesis, CausalGraph } from '../../types'
@@ -437,16 +437,19 @@ describe('HypothesisCard', () => {
 
     it('does not enable edit mode when onDirectEdit is not provided', async () => {
       const user = userEvent.setup()
-      const handlers = createMockHandlers()
-      // Remove onDirectEdit
-      const { onDirectEdit, ...handlersWithoutEdit } = handlers
+      // Create handlers and explicitly omit onDirectEdit
+      const { onRefresh, onDelete, onExport, onRefine, onSelect } = createMockHandlers()
 
       render(
         <HypothesisCard
           hypothesis={mockHypothesis}
           graph={mockGraph}
           nodeNames={mockNodeNames}
-          {...handlersWithoutEdit}
+          onRefresh={onRefresh}
+          onDelete={onDelete}
+          onExport={onExport}
+          onRefine={onRefine}
+          onSelect={onSelect}
         />
       )
 
@@ -788,15 +791,19 @@ describe('HypothesisCard', () => {
 
     it('does not show Edit button when onDirectEdit is not provided', async () => {
       const user = userEvent.setup()
-      const handlers = createMockHandlers()
-      const { onDirectEdit, ...handlersWithoutEdit } = handlers
+      // Create handlers and explicitly omit onDirectEdit
+      const { onRefresh, onDelete, onExport, onRefine, onSelect } = createMockHandlers()
 
       render(
         <HypothesisCard
           hypothesis={mockHypothesis}
           graph={mockGraph}
           nodeNames={mockNodeNames}
-          {...handlersWithoutEdit}
+          onRefresh={onRefresh}
+          onDelete={onDelete}
+          onExport={onExport}
+          onRefine={onRefine}
+          onSelect={onSelect}
         />
       )
 

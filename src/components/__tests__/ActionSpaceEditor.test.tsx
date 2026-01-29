@@ -374,7 +374,7 @@ describe('ActionSpaceEditor', () => {
 
       // Find the action card for "Action One" and click its remove button
       const actionOneCard = screen.getByText('Action One').closest('div.bg-white')!
-      const removeButton = within(actionOneCard).getByText('×')
+      const removeButton = within(actionOneCard as HTMLElement).getByText('×')
       await user.click(removeButton)
 
       // Check that onUpdate was called
@@ -531,7 +531,7 @@ describe('ActionSpaceEditor', () => {
 
       // Step 3: Remove the custom action
       const customActionCard = screen.getByText('My Custom Analysis').closest('div.bg-white')!
-      const removeButton = within(customActionCard).getByText('×')
+      const removeButton = within(customActionCard as HTMLElement).getByText('×')
       await user.click(removeButton)
 
       // Should be back to just preset actions
