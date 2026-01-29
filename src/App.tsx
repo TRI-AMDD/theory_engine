@@ -45,8 +45,14 @@ import { AddNodeModal } from './components/AddNodeModal';
 import { TheoryEnginePanel } from './components/TheoryEnginePanel';
 import { ActionDetailPanel } from './components/ActionDetailPanel';
 import { ModificationConfirmModal } from './components/ModificationConfirmModal';
+import { ShoshinPanel } from './shoshin/ShoshinPanel';
+
+type AppMode = 'causeway' | 'shoshin';
 
 function App() {
+  // App mode state - Shoshin (chat) is the primary entry point
+  const [appMode, setAppMode] = useState<AppMode>('shoshin');
+
   // Core state
   const [graph, setGraph] = useState<CausalGraph>(initialGraph);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -1042,25 +1048,52 @@ function App() {
         </div>
       )}
 
-      {/* App Title */}
+      {/* App Title with Mode Toggle */}
       <div className="bg-slate-800 text-white px-4 py-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h1 className="text-lg font-semibold tracking-wide">Causeway</h1>
-          <button
-            onClick={() => setShowHelp(true)}
-            className="text-slate-400 hover:text-slate-200 transition-colors"
-            title="Help"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </button>
-          <span className="text-xs text-slate-400">
-            Credit to conversations with Amanda Volk & Kevin Tran for idea
-          </span>
+          {/* Mode Toggle */}
+          <div className="flex bg-slate-700 rounded-lg p-0.5">
+            <button
+              onClick={() => setAppMode('shoshin')}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                appMode === 'shoshin'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              💬 Shoshin
+            </button>
+            <button
+              onClick={() => setAppMode('causeway')}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                appMode === 'causeway'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              🔀 Causeway
+            </button>
+          </div>
+          {appMode === 'causeway' && (
+            <>
+              <button
+                onClick={() => setShowHelp(true)}
+                className="text-slate-400 hover:text-slate-200 transition-colors"
+                title="Help"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </button>
+              <span className="text-xs text-slate-400">
+                Credit to conversations with Amanda Volk & Kevin Tran for idea
+              </span>
+            </>
+          )}
         </div>
 
-        {/* Token Usage Display & API Config */}
+        {/* Token Usage Display & API Config - only show in Causeway mode */}
+        {appMode === 'causeway' && (
         <div className="flex items-center gap-3">
           {/* API Key Config Button */}
           <button
@@ -1097,8 +1130,19 @@ function App() {
             </button>
           )}
         </div>
+        )}
       </div>
 
+      {/* Shoshin Mode - Full screen chat interface */}
+      {appMode === 'shoshin' && (
+        <div className="flex-1 overflow-hidden">
+          <ShoshinPanel />
+        </div>
+      )}
+
+      {/* Causeway Mode - Original UI */}
+      {appMode === 'causeway' && (
+      <>
       {/* Error Banner */}
       {error && (
         <div className="bg-red-100 border-b border-red-300 px-4 py-2 flex items-center justify-between">
@@ -1623,6 +1667,8 @@ function App() {
           onReject={handleRejectModification}
           onClose={() => setPendingModification(null)}
         />
+      )}
+      </>
       )}
     </div>
   );

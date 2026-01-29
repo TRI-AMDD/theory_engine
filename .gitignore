@@ -29,3 +29,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Shoshin - cloned ARC repository (external dependency)
+ARC/
+
+# Uploaded structure files (user data)
+uploads/

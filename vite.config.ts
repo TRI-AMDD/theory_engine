@@ -6,6 +6,15 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   base: '/causeway/',
   plugins: [react(), tailwindcss()],
+  server: {
+    proxy: {
+      '/api/ollama': {
+        target: 'http://localhost:11434',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/ollama/, '/api'),
+      },
+    },
+  },
   define: {
     // Map shell environment variables to VITE_ variables
     'import.meta.env.VITE_AZURE_OPENAI_API_KEY': JSON.stringify(
