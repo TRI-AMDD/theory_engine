@@ -30,6 +30,7 @@ export function HypothesisCard({
   const [expanded, setExpanded] = useState(false);
   const [feedbackInput, setFeedbackInput] = useState('');
   const [isRefining, setIsRefining] = useState(false);
+  const [refineError, setRefineError] = useState<string | null>(null);
 
   // Inline editing state for prescription
   const [isEditingPrescription, setIsEditingPrescription] = useState(false);
@@ -363,9 +364,12 @@ export function HypothesisCard({
                 onClick={async () => {
                   if (!feedbackInput.trim()) return;
                   setIsRefining(true);
+                  setRefineError(null);
                   try {
                     await onRefine(hypothesis.id, feedbackInput);
                     setFeedbackInput('');
+                  } catch (err) {
+                    setRefineError(err instanceof Error ? err.message : 'Refinement failed');
                   } finally {
                     setIsRefining(false);
                   }
@@ -376,6 +380,7 @@ export function HypothesisCard({
                 {isRefining ? '...' : 'Refine'}
               </button>
             </div>
+            {refineError && <p className="text-xs text-red-600 mt-1">{refineError}</p>}
           </div>
 
           {/* Actions */}

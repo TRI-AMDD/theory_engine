@@ -2210,7 +2210,11 @@ Refine the action based on this feedback while ensuring it still serves all link
     }
   ]);
 
-  return JSON.parse(response);
+  try {
+    return JSON.parse(response);
+  } catch {
+    throw new Error('Failed to parse refinement response from AI');
+  }
 }
 
 export async function parseGraphModification(

@@ -332,7 +332,7 @@ function App() {
     } finally {
       setIsCondensing(false);
     }
-  }, [selectedNodeIds, graph]);
+  }, [selectedNodeIds, graph, consolidateHint]);
 
   // Toggle expand mode
   const handleToggleExpandMode = useCallback(() => {
@@ -379,7 +379,7 @@ function App() {
     } finally {
       setIsExpanding(false);
     }
-  }, [selectedNode, graph, expandLevel]);
+  }, [selectedNode, graph, expandLevel, expandHint]);
 
   // Accept expansion
   const handleAcceptExpansion = useCallback(() => {

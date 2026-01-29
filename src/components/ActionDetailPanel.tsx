@@ -26,6 +26,7 @@ export function ActionDetailPanel({
   const [editedInstructions, setEditedInstructions] = useState(action.consolidatedInstructions);
   const [feedbackInput, setFeedbackInput] = useState('');
   const [isRefining, setIsRefining] = useState(false);
+  const [refineError, setRefineError] = useState<string | null>(null);
 
   const handleExportJson = () => {
     const exported = exportActionToJson(action, hypotheses);
@@ -218,9 +219,12 @@ export function ActionDetailPanel({
                   onClick={async () => {
                     if (!feedbackInput.trim() || !onLlmRefine) return;
                     setIsRefining(true);
+                    setRefineError(null);
                     try {
                       await onLlmRefine(action.id, feedbackInput);
                       setFeedbackInput('');
+                    } catch (err) {
+                      setRefineError(err instanceof Error ? err.message : 'Refinement failed');
                     } finally {
                       setIsRefining(false);
                     }
@@ -231,6 +235,7 @@ export function ActionDetailPanel({
                   {isRefining ? '...' : 'Refine'}
                 </button>
               </div>
+              {refineError && <p className="text-xs text-red-600 mt-1">{refineError}</p>}
             </div>
           </>
         )}
