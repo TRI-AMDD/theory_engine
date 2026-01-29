@@ -955,6 +955,12 @@ function App() {
     }));
   }, [hypotheses, graph]);
 
+  const handleDirectHypothesisEdit = useCallback((hypothesisId: string, updates: Partial<Hypothesis>) => {
+    setHypotheses(prev => prev.map(h =>
+      h.id === hypothesisId ? { ...h, ...updates } : h
+    ));
+  }, []);
+
   // Action modification handlers
   const handleProposeModification = useCallback((
     actionId: string,
@@ -1135,6 +1141,7 @@ function App() {
             onDeleteHypothesis={handleDeleteHypothesis}
             onExportHypothesis={handleExportHypothesis}
             onRefineHypothesis={handleRefineHypothesis}
+            onDirectHypothesisEdit={handleDirectHypothesisEdit}
             activeHypothesisId={activeHypothesisId}
             onHypothesisSelect={handleHypothesisSelect}
             consolidatedActionSet={consolidatedActionSet}
