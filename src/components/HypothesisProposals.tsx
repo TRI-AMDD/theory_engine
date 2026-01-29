@@ -9,6 +9,7 @@ interface HypothesisProposalsProps {
   onDelete: (hypothesisId: string) => void;
   onExport: (hypothesis: Hypothesis) => void;
   onRefine: (hypothesisId: string, feedback: string) => Promise<void>;
+  onDirectEdit?: (hypothesisId: string, updates: Partial<Hypothesis>) => void;
   onHypothesisSelect?: (hypothesisId: string | null) => void;
   activeHypothesisId?: string | null;
 }
@@ -21,6 +22,7 @@ export function HypothesisProposals({
   onDelete,
   onExport,
   onRefine,
+  onDirectEdit,
   onHypothesisSelect,
   activeHypothesisId
 }: HypothesisProposalsProps) {
@@ -58,6 +60,7 @@ export function HypothesisProposals({
             onDelete={onDelete}
             onExport={onExport}
             onRefine={onRefine}
+            onDirectEdit={onDirectEdit}
             onSelect={onHypothesisSelect}
             isActive={hypothesis.id === activeHypothesisId}
           />

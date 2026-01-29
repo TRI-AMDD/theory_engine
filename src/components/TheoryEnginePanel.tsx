@@ -18,6 +18,7 @@ interface TheoryEnginePanelProps {
   onDeleteHypothesis: (hypothesisId: string) => void;
   onExportHypothesis: (hypothesis: Hypothesis) => void;
   onRefineHypothesis: (hypothesisId: string, feedback: string) => Promise<void>;
+  onDirectHypothesisEdit?: (hypothesisId: string, updates: Partial<Hypothesis>) => void;
   activeHypothesisId: string | null;
   onHypothesisSelect: (hypothesisId: string | null) => void;
   consolidatedActionSet: ConsolidatedActionSet | null;
@@ -37,6 +38,7 @@ export function TheoryEnginePanel({
   onDeleteHypothesis,
   onExportHypothesis,
   onRefineHypothesis,
+  onDirectHypothesisEdit,
   activeHypothesisId,
   onHypothesisSelect,
   consolidatedActionSet,
@@ -102,6 +104,7 @@ export function TheoryEnginePanel({
             onDelete={onDeleteHypothesis}
             onExport={onExportHypothesis}
             onRefine={onRefineHypothesis}
+            onDirectEdit={onDirectHypothesisEdit}
             onHypothesisSelect={onHypothesisSelect}
             activeHypothesisId={activeHypothesisId}
           />

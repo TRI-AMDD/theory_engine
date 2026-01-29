@@ -12,6 +12,7 @@ interface HypothesisCardProps {
   onRefine: (hypothesisId: string, feedback: string) => Promise<void>;
   onSelect?: (hypothesisId: string | null) => void;
   isActive?: boolean;
+  onDirectEdit?: (hypothesisId: string, updates: Partial<Hypothesis>) => void;
 }
 
 export function HypothesisCard({
@@ -23,11 +24,25 @@ export function HypothesisCard({
   onExport,
   onRefine,
   onSelect,
-  isActive
+  isActive,
+  onDirectEdit
 }: HypothesisCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [feedbackInput, setFeedbackInput] = useState('');
   const [isRefining, setIsRefining] = useState(false);
+  const [refineError, setRefineError] = useState<string | null>(null);
+
+  // Inline editing state for prescription
+  const [isEditingPrescription, setIsEditingPrescription] = useState(false);
+  const [editedPrescription, setEditedPrescription] = useState(hypothesis.prescription);
+
+  // Inline editing state for predictions
+  const [isEditingPredictions, setIsEditingPredictions] = useState(false);
+  const [editedObsPrediction, setEditedObsPrediction] = useState(hypothesis.predictions.observables);
+  const [editedDesPrediction, setEditedDesPrediction] = useState(hypothesis.predictions.desirables);
+
+  // Inline editing state for action hooks
+  const [editingActionIndex, setEditingActionIndex] = useState<number | null>(null);
 
   const getNodeName = (id: string) =>
     graph.nodes.find(n => n.id === id)?.displayName || 'Unknown';
@@ -82,8 +97,57 @@ export function HypothesisCard({
       {/* Expanded content */}
       {expanded && (
         <div className="px-3 pb-3 space-y-3 border-t border-gray-100">
+          {/* Prescription (editable) */}
+          <div className="pt-3">
+            <span className="text-xs font-medium text-gray-600">Prescription:</span>
+            {isEditingPrescription ? (
+              <div className="mt-1">
+                <textarea
+                  value={editedPrescription}
+                  onChange={(e) => setEditedPrescription(e.target.value)}
+                  className="w-full text-sm p-2 border border-blue-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-y"
+                  rows={3}
+                  autoFocus
+                />
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={() => {
+                      onDirectEdit?.(hypothesis.id, { prescription: editedPrescription });
+                      setIsEditingPrescription(false);
+                    }}
+                    className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditedPrescription(hypothesis.prescription);
+                      setIsEditingPrescription(false);
+                    }}
+                    className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p
+                className="text-sm text-gray-800 mt-1 cursor-pointer hover:bg-gray-50 rounded p-1 -m-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onDirectEdit) {
+                    setIsEditingPrescription(true);
+                  }
+                }}
+                title={onDirectEdit ? 'Click to edit' : undefined}
+              >
+                {highlight(hypothesis.prescription)}
+              </p>
+            )}
+          </div>
+
           {/* Node references */}
-          <div className="pt-3 space-y-1 text-xs">
+          <div className="space-y-1 text-xs">
             <div>
               <span className="text-blue-600 font-medium">Intervenables:</span>{' '}
               {hypothesis.intervenables.map(getNodeName).join(', ') || 'None'}
@@ -98,18 +162,92 @@ export function HypothesisCard({
             </div>
           </div>
 
-          {/* Predictions */}
+          {/* Predictions (editable) */}
           <div className="space-y-2">
             <div>
               <span className="text-xs font-medium text-gray-600">Observable Predictions:</span>
-              <p className="text-sm text-gray-700">{highlight(hypothesis.predictions.observables)}</p>
+              {isEditingPredictions ? (
+                <div className="mt-1 space-y-3">
+                  <div>
+                    <label className="text-xs text-gray-500">Observable:</label>
+                    <textarea
+                      value={editedObsPrediction}
+                      onChange={(e) => setEditedObsPrediction(e.target.value)}
+                      className="w-full text-sm p-2 border border-green-300 rounded-md focus:ring-1 focus:ring-green-500 focus:border-green-500 resize-y"
+                      rows={2}
+                      autoFocus
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500">Desirable:</label>
+                    <textarea
+                      value={editedDesPrediction}
+                      onChange={(e) => setEditedDesPrediction(e.target.value)}
+                      className="w-full text-sm p-2 border border-yellow-300 rounded-md focus:ring-1 focus:ring-yellow-500 focus:border-yellow-500 resize-y"
+                      rows={2}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        onDirectEdit?.(hypothesis.id, {
+                          predictions: {
+                            observables: editedObsPrediction,
+                            desirables: editedDesPrediction
+                          }
+                        });
+                        setIsEditingPredictions(false);
+                      }}
+                      className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditedObsPrediction(hypothesis.predictions.observables);
+                        setEditedDesPrediction(hypothesis.predictions.desirables);
+                        setIsEditingPredictions(false);
+                      }}
+                      className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p
+                    className="text-sm text-gray-700 cursor-pointer hover:bg-gray-50 rounded p-1 -m-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onDirectEdit) {
+                        setIsEditingPredictions(true);
+                      }
+                    }}
+                    title={onDirectEdit ? 'Click to edit predictions' : undefined}
+                  >
+                    {highlight(hypothesis.predictions.observables)}
+                  </p>
+                  {hypothesis.predictions.desirables && (
+                    <div className="mt-2">
+                      <span className="text-xs font-medium text-gray-600">Desirable Predictions:</span>
+                      <p
+                        className="text-sm text-gray-700 cursor-pointer hover:bg-gray-50 rounded p-1 -m-1"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onDirectEdit) {
+                            setIsEditingPredictions(true);
+                          }
+                        }}
+                        title={onDirectEdit ? 'Click to edit predictions' : undefined}
+                      >
+                        {highlight(hypothesis.predictions.desirables)}
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
-            {hypothesis.predictions.desirables && (
-              <div>
-                <span className="text-xs font-medium text-gray-600">Desirable Predictions:</span>
-                <p className="text-sm text-gray-700">{highlight(hypothesis.predictions.desirables)}</p>
-              </div>
-            )}
           </div>
 
           {/* Story */}
@@ -125,17 +263,70 @@ export function HypothesisCard({
               <div className="mt-1 space-y-2">
                 {hypothesis.actionHooks.map((hook, i) => (
                   <div key={i} className="bg-gray-50 rounded p-2 text-xs">
-                    <div className="font-medium text-gray-700">{hook.actionName}</div>
-                    {Object.entries(hook.parameters).length > 0 && (
-                      <div className="mt-1 flex flex-wrap gap-1">
+                    <div className="flex items-center justify-between">
+                      <div className="font-medium text-gray-700">{hook.actionName}</div>
+                      {onDirectEdit && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingActionIndex(editingActionIndex === i ? null : i);
+                          }}
+                          className="text-xs px-1.5 py-0.5 text-blue-600 hover:bg-blue-50 rounded"
+                        >
+                          {editingActionIndex === i ? 'Done' : 'Edit'}
+                        </button>
+                      )}
+                    </div>
+                    {editingActionIndex === i ? (
+                      <div className="mt-2 space-y-2">
+                        {/* Editable parameters */}
                         {Object.entries(hook.parameters).map(([k, v]) => (
-                          <span key={k} className="px-1 bg-blue-100 text-blue-700 rounded">
-                            {k}: {v}
-                          </span>
+                          <div key={k} className="flex gap-2 items-center">
+                            <label className="w-24 text-gray-600">{k}:</label>
+                            <input
+                              type="text"
+                              value={v}
+                              onChange={(e) => {
+                                const newHooks = [...hypothesis.actionHooks];
+                                newHooks[i] = {
+                                  ...newHooks[i],
+                                  parameters: { ...newHooks[i].parameters, [k]: e.target.value }
+                                };
+                                onDirectEdit?.(hypothesis.id, { actionHooks: newHooks });
+                              }}
+                              className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs"
+                            />
+                          </div>
                         ))}
+                        {/* Editable instructions */}
+                        <div>
+                          <label className="text-gray-600">Instructions:</label>
+                          <textarea
+                            value={hook.instructions}
+                            onChange={(e) => {
+                              const newHooks = [...hypothesis.actionHooks];
+                              newHooks[i] = { ...newHooks[i], instructions: e.target.value };
+                              onDirectEdit?.(hypothesis.id, { actionHooks: newHooks });
+                            }}
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-xs mt-1"
+                            rows={2}
+                          />
+                        </div>
                       </div>
+                    ) : (
+                      <>
+                        {Object.entries(hook.parameters).length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {Object.entries(hook.parameters).map(([k, v]) => (
+                              <span key={k} className="px-1 bg-blue-100 text-blue-700 rounded">
+                                {k}: {v}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <p className="mt-1 text-gray-600">{hook.instructions}</p>
+                      </>
                     )}
-                    <p className="mt-1 text-gray-600">{hook.instructions}</p>
                   </div>
                 ))}
               </div>
@@ -173,9 +364,12 @@ export function HypothesisCard({
                 onClick={async () => {
                   if (!feedbackInput.trim()) return;
                   setIsRefining(true);
+                  setRefineError(null);
                   try {
                     await onRefine(hypothesis.id, feedbackInput);
                     setFeedbackInput('');
+                  } catch (err) {
+                    setRefineError(err instanceof Error ? err.message : 'Refinement failed');
                   } finally {
                     setIsRefining(false);
                   }
@@ -186,6 +380,7 @@ export function HypothesisCard({
                 {isRefining ? '...' : 'Refine'}
               </button>
             </div>
+            {refineError && <p className="text-xs text-red-600 mt-1">{refineError}</p>}
           </div>
 
           {/* Actions */}

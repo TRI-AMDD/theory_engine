@@ -107,9 +107,23 @@ export interface GraphBuildResult {
 export interface ActionDefinition {
   id: string;
   name: string;
-  type: 'md_simulation' | 'experiment' | 'literature' | 'dataset' | 'custom';
+  type: 'md_simulation' | 'experiment' | 'literature' | 'dataset' | 'custom' |
+        'matlantis_md' | 'xtb_calculation' | 'crystal_structure_query' | 'drxnet_prediction';
   description: string;
   parameterHints?: string[];
+  // Structured input categories for actions with complex parameter spaces
+  inputCategories?: {
+    category: string;
+    parameters: string[];
+    description: string;
+  }[];
+}
+
+export interface ActionSpacePreset {
+  id: string;
+  name: string;
+  description: string;
+  actions: ActionDefinition[];
 }
 
 export interface ActionSpace {

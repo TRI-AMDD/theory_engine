@@ -22,6 +22,7 @@ import {
   generateHypothesis,
   refineHypothesis,
   generateMultipleHypotheses,
+  refineActionWithFeedback,
   type GraphContext,
   type TokenUsage,
   type CondensedNodeProposal,
@@ -331,7 +332,7 @@ function App() {
     } finally {
       setIsCondensing(false);
     }
-  }, [selectedNodeIds, graph]);
+  }, [selectedNodeIds, graph, consolidateHint]);
 
   // Toggle expand mode
   const handleToggleExpandMode = useCallback(() => {
@@ -378,7 +379,7 @@ function App() {
     } finally {
       setIsExpanding(false);
     }
-  }, [selectedNode, graph, expandLevel]);
+  }, [selectedNode, graph, expandLevel, expandHint]);
 
   // Accept expansion
   const handleAcceptExpansion = useCallback(() => {
@@ -955,6 +956,12 @@ function App() {
     }));
   }, [hypotheses, graph]);
 
+  const handleDirectHypothesisEdit = useCallback((hypothesisId: string, updates: Partial<Hypothesis>) => {
+    setHypotheses(prev => prev.map(h =>
+      h.id === hypothesisId ? { ...h, ...updates } : h
+    ));
+  }, []);
+
   // Action modification handlers
   const handleProposeModification = useCallback((
     actionId: string,
@@ -1005,6 +1012,24 @@ function App() {
   const handleRejectModification = useCallback(() => {
     setPendingModification(null);
   }, []);
+
+  const handleLlmRefineAction = useCallback(async (actionId: string, feedback: string) => {
+    if (!consolidatedActionSet) return;
+
+    const action = consolidatedActionSet.actions.find(a => a.id === actionId);
+    if (!action) return;
+
+    const refined = await refineActionWithFeedback(action, feedback, hypotheses);
+
+    setConsolidatedActionSet(prev => prev ? {
+      ...prev,
+      actions: prev.actions.map(a =>
+        a.id === actionId
+          ? { ...a, commonParameters: refined.parameters, consolidatedInstructions: refined.instructions }
+          : a
+      )
+    } : null);
+  }, [consolidatedActionSet, hypotheses]);
 
   // Get selected action for detail panel
   const selectedAction = useMemo(() => {
@@ -1135,6 +1160,7 @@ function App() {
             onDeleteHypothesis={handleDeleteHypothesis}
             onExportHypothesis={handleExportHypothesis}
             onRefineHypothesis={handleRefineHypothesis}
+            onDirectHypothesisEdit={handleDirectHypothesisEdit}
             activeHypothesisId={activeHypothesisId}
             onHypothesisSelect={handleHypothesisSelect}
             consolidatedActionSet={consolidatedActionSet}
@@ -1611,6 +1637,7 @@ function App() {
           hypotheses={hypotheses}
           onClose={() => setSelectedActionId(null)}
           onProposeModification={handleProposeModification}
+          onLlmRefine={handleLlmRefineAction}
         />
       )}
 
