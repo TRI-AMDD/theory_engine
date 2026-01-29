@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ActionSpace, ActionDefinition } from '../types';
+import { ACTION_SPACE_PRESETS } from '../data/actionSpacePresets';
 
 interface ActionSpaceEditorProps {
   actionSpace: ActionSpace;
@@ -21,6 +22,10 @@ const ACTION_TYPES = [
   { value: 'experiment', label: 'Experiment', defaultHints: ['method', 'conditions', 'samples'] },
   { value: 'literature', label: 'Literature Search', defaultHints: ['keywords', 'databases'] },
   { value: 'dataset', label: 'Dataset Query', defaultHints: ['dataset_name', 'query_type'] },
+  { value: 'matlantis_md', label: 'Matlantis MD', defaultHints: ['structure', 'temperature', 'pressure', 'timestep', 'duration', 'ensemble'] },
+  { value: 'xtb_calculation', label: 'XTB', defaultHints: ['structure', 'method', 'charge', 'multiplicity', 'solvent'] },
+  { value: 'crystal_structure_query', label: 'Crystal DB', defaultHints: ['database', 'formula', 'space_group', 'elements', 'band_gap_range'] },
+  { value: 'drxnet_prediction', label: 'DRXnet', defaultHints: ['composition', 'current_density_rate', 'voltage_window', 'cycle_number'] },
   { value: 'custom', label: 'Custom', defaultHints: [] },
 ] as const;
 
@@ -29,6 +34,7 @@ export function ActionSpaceEditor({ actionSpace, onUpdate }: ActionSpaceEditorPr
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState<ActionDefinition['type']>('custom');
   const [newDescription, setNewDescription] = useState('');
+  const [showPresetMenu, setShowPresetMenu] = useState(false);
 
   const handleAdd = () => {
     if (!newName.trim()) return;
@@ -57,16 +63,74 @@ export function ActionSpaceEditor({ actionSpace, onUpdate }: ActionSpaceEditorPr
     });
   };
 
+  const handleLoadPreset = (presetId: string) => {
+    const preset = ACTION_SPACE_PRESETS.find(p => p.id === presetId);
+    if (!preset) return;
+
+    // Get existing action IDs to avoid duplicates
+    const existingIds = new Set(actionSpace.actions.map(a => a.id));
+
+    // Filter out actions that already exist
+    const newActions = preset.actions.filter(a => !existingIds.has(a.id));
+
+    // Merge with existing actions
+    onUpdate({
+      actions: [...actionSpace.actions, ...newActions],
+    });
+
+    setShowPresetMenu(false);
+  };
+
+  const handleClearAll = () => {
+    if (window.confirm('Are you sure you want to clear all actions? This cannot be undone.')) {
+      onUpdate({ actions: [] });
+    }
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-gray-700">Action Space</h2>
-        <button
-          onClick={() => setIsAdding(true)}
-          className="text-xs text-blue-600 hover:text-blue-800"
-        >
-          + Add Action
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Load Preset dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowPresetMenu(!showPresetMenu)}
+              className="text-xs px-2 py-1 bg-purple-600 text-white rounded hover:bg-purple-700"
+            >
+              Load Preset {showPresetMenu ? '\u25B2' : '\u25BC'}
+            </button>
+            {showPresetMenu && (
+              <div className="absolute right-0 mt-1 w-64 bg-white border border-gray-200 rounded shadow-lg z-10">
+                {ACTION_SPACE_PRESETS.map(preset => (
+                  <button
+                    key={preset.id}
+                    onClick={() => handleLoadPreset(preset.id)}
+                    className="w-full text-left px-3 py-2 hover:bg-purple-50 border-b border-gray-100 last:border-b-0"
+                  >
+                    <div className="text-sm font-medium text-gray-800">{preset.name}</div>
+                    <div className="text-xs text-gray-500">{preset.description}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {/* Clear All button - only shows when actions exist */}
+          {actionSpace.actions.length > 0 && (
+            <button
+              onClick={handleClearAll}
+              className="text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+            >
+              Clear All
+            </button>
+          )}
+          <button
+            onClick={() => setIsAdding(true)}
+            className="text-xs text-blue-600 hover:text-blue-800"
+          >
+            + Add Action
+          </button>
+        </div>
       </div>
 
       {actionSpace.actions.length === 0 && !isAdding && (
@@ -98,6 +162,16 @@ export function ActionSpaceEditor({ actionSpace, onUpdate }: ActionSpaceEditorPr
                 <span key={hint} className="text-xs px-1 bg-blue-50 text-blue-600 rounded">
                   {hint}
                 </span>
+              ))}
+            </div>
+          )}
+          {action.inputCategories && action.inputCategories.length > 0 && (
+            <div className="mt-2 space-y-1">
+              {action.inputCategories.map(cat => (
+                <div key={cat.category} className="text-xs">
+                  <span className="font-medium text-purple-700">{cat.category}:</span>
+                  <span className="text-gray-500 ml-1">{cat.parameters.join(', ')}</span>
+                </div>
               ))}
             </div>
           )}
