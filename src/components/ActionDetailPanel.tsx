@@ -11,17 +11,21 @@ interface ActionDetailPanelProps {
   hypotheses: Hypothesis[];
   onClose: () => void;
   onProposeModification: (actionId: string, proposedParams: Record<string, string>, proposedInstructions: string) => void;
+  onLlmRefine?: (actionId: string, feedback: string) => Promise<void>;
 }
 
 export function ActionDetailPanel({
   action,
   hypotheses,
   onClose,
-  onProposeModification
+  onProposeModification,
+  onLlmRefine
 }: ActionDetailPanelProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedParams, setEditedParams] = useState<Record<string, string>>(action.commonParameters);
   const [editedInstructions, setEditedInstructions] = useState(action.consolidatedInstructions);
+  const [feedbackInput, setFeedbackInput] = useState('');
+  const [isRefining, setIsRefining] = useState(false);
 
   const handleExportJson = () => {
     const exported = exportActionToJson(action, hypotheses);
@@ -199,6 +203,35 @@ export function ActionDetailPanel({
             >
               Propose Modification
             </button>
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <label className="text-xs font-medium text-gray-600">Ask AI to refine:</label>
+              <div className="flex gap-2 mt-1">
+                <input
+                  type="text"
+                  value={feedbackInput}
+                  onChange={e => setFeedbackInput(e.target.value)}
+                  placeholder="e.g., 'Use higher temperature range'"
+                  className="flex-1 text-xs px-2 py-1 border border-gray-300 rounded"
+                  disabled={isRefining}
+                />
+                <button
+                  onClick={async () => {
+                    if (!feedbackInput.trim() || !onLlmRefine) return;
+                    setIsRefining(true);
+                    try {
+                      await onLlmRefine(action.id, feedbackInput);
+                      setFeedbackInput('');
+                    } finally {
+                      setIsRefining(false);
+                    }
+                  }}
+                  disabled={!feedbackInput.trim() || isRefining || !onLlmRefine}
+                  className="px-3 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 disabled:bg-gray-300"
+                >
+                  {isRefining ? '...' : 'Refine'}
+                </button>
+              </div>
+            </div>
           </>
         )}
       </div>

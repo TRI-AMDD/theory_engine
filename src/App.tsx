@@ -22,6 +22,7 @@ import {
   generateHypothesis,
   refineHypothesis,
   generateMultipleHypotheses,
+  refineActionWithFeedback,
   type GraphContext,
   type TokenUsage,
   type CondensedNodeProposal,
@@ -1012,6 +1013,24 @@ function App() {
     setPendingModification(null);
   }, []);
 
+  const handleLlmRefineAction = useCallback(async (actionId: string, feedback: string) => {
+    if (!consolidatedActionSet) return;
+
+    const action = consolidatedActionSet.actions.find(a => a.id === actionId);
+    if (!action) return;
+
+    const refined = await refineActionWithFeedback(action, feedback, hypotheses);
+
+    setConsolidatedActionSet(prev => prev ? {
+      ...prev,
+      actions: prev.actions.map(a =>
+        a.id === actionId
+          ? { ...a, commonParameters: refined.parameters, consolidatedInstructions: refined.instructions }
+          : a
+      )
+    } : null);
+  }, [consolidatedActionSet, hypotheses]);
+
   // Get selected action for detail panel
   const selectedAction = useMemo(() => {
     if (!selectedActionId || !consolidatedActionSet) return null;
@@ -1618,6 +1637,7 @@ function App() {
           hypotheses={hypotheses}
           onClose={() => setSelectedActionId(null)}
           onProposeModification={handleProposeModification}
+          onLlmRefine={handleLlmRefineAction}
         />
       )}
 

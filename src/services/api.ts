@@ -2142,6 +2142,77 @@ export async function consolidateHypothesisActions(
   };
 }
 
+// ============================================
+// Action Refinement
+// ============================================
+
+async function callAzureOpenAI(
+  messages: Array<{ role: 'system' | 'user'; content: string }>
+): Promise<string> {
+  if (!endpoint || !apiKey) {
+    throw new Error('Azure OpenAI not configured');
+  }
+
+  const response = await client.chat.completions.create({
+    model: deploymentName,
+    messages,
+    max_tokens: 1024,
+    temperature: 0.5
+  });
+
+  addTokenUsage(response.usage);
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) throw new Error('No content in API response');
+
+  // Clean up potential markdown code fences
+  let cleaned = content.trim();
+  if (cleaned.startsWith('```json')) cleaned = cleaned.slice(7);
+  else if (cleaned.startsWith('```')) cleaned = cleaned.slice(3);
+  if (cleaned.endsWith('```')) cleaned = cleaned.slice(0, -3);
+  return cleaned.trim();
+}
+
+export async function refineActionWithFeedback(
+  action: ConsolidatedAction,
+  feedback: string,
+  hypotheses: Hypothesis[]
+): Promise<{ parameters: Record<string, string>; instructions: string }> {
+  const linkedHypotheses = hypotheses
+    .filter(h => action.hypothesisLinks.some(l => l.hypothesisId === h.id))
+    .map(h => h.prescription)
+    .join('\n- ');
+
+  const response = await callAzureOpenAI([
+    {
+      role: 'system',
+      content: `You are refining an action based on user feedback. The action is linked to multiple hypotheses and should serve all of them.
+
+Return JSON only:
+{
+  "parameters": { "param1": "value1", ... },
+  "instructions": "refined instructions"
+}`
+    },
+    {
+      role: 'user',
+      content: `ACTION: ${action.actionName}
+TYPE: ${action.actionType}
+CURRENT PARAMETERS: ${JSON.stringify(action.commonParameters)}
+CURRENT INSTRUCTIONS: ${action.consolidatedInstructions}
+
+LINKED HYPOTHESES:
+- ${linkedHypotheses}
+
+USER FEEDBACK: ${feedback}
+
+Refine the action based on this feedback while ensuring it still serves all linked hypotheses.`
+    }
+  ]);
+
+  return JSON.parse(response);
+}
+
 export async function parseGraphModification(
   command: string,
   graph: CausalGraph
