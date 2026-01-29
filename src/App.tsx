@@ -46,6 +46,7 @@ import { TheoryEnginePanel } from './components/TheoryEnginePanel';
 import { ActionDetailPanel } from './components/ActionDetailPanel';
 import { ModificationConfirmModal } from './components/ModificationConfirmModal';
 import { ShoshinPanel } from './shoshin/ShoshinPanel';
+import { MatlantisChat } from './components/MatlantisChat';
 
 type AppMode = 'causeway' | 'shoshin';
 
@@ -93,6 +94,7 @@ function App() {
   const [visualizationMode, setVisualizationMode] = useState<VisualizationMode>('causal');
   const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
   const [pendingModification, setPendingModification] = useState<ActionModification | null>(null);
+  const [showMatlantisChat, setShowMatlantisChat] = useState(false);
 
   // New Graph confirmation state
   const [confirmNewGraph, setConfirmNewGraph] = useState(false);
@@ -1243,6 +1245,22 @@ function App() {
               </button>
             </div>
 
+            {/* Matlantis Chat Toggle */}
+            <button
+              onClick={() => setShowMatlantisChat(!showMatlantisChat)}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md shadow-sm flex items-center gap-2 transition-colors ${
+                showMatlantisChat
+                  ? 'bg-cyan-600 text-white'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+              title="Open Matlantis calculation chat"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+              </svg>
+              Matlantis Chat
+            </button>
+
             {/* New Graph button */}
             <button
               onClick={handleNewGraph}
@@ -1667,6 +1685,13 @@ function App() {
           onReject={handleRejectModification}
           onClose={() => setPendingModification(null)}
         />
+      )}
+
+      {/* Matlantis Chat Panel */}
+      {showMatlantisChat && (
+        <div className="fixed right-0 top-0 h-full w-96 z-50 shadow-xl">
+          <MatlantisChat onClose={() => setShowMatlantisChat(false)} />
+        </div>
       )}
       </>
       )}

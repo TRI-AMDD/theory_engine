@@ -9,17 +9,34 @@ interface ActionNodeData {
   isHighlighted: boolean;
 }
 
-const actionTypeColors: Record<string, { bg: string; text: string; border: string }> = {
-  md_simulation: { bg: 'bg-cyan-100', text: 'text-cyan-800', border: 'border-cyan-400' },
-  experiment: { bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-400' },
-  literature: { bg: 'bg-emerald-100', text: 'text-emerald-800', border: 'border-emerald-400' },
-  dataset: { bg: 'bg-yellow-100', text: 'text-yellow-800', border: 'border-yellow-400' },
-  custom: { bg: 'bg-gray-100', text: 'text-gray-800', border: 'border-gray-400' },
-};
+// Get colors based on action type
+function getActionTypeColors(actionType: string): { bg: string; text: string; border: string } {
+  // Matlantis batch types
+  if (actionType.startsWith('matlantis_batch_')) {
+    return { bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-400' };
+  }
+  // Matlantis types
+  if (actionType.startsWith('matlantis_')) {
+    return { bg: 'bg-cyan-100', text: 'text-cyan-800', border: 'border-cyan-400' };
+  }
+  // Original types
+  switch (actionType) {
+    case 'md_simulation':
+      return { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-400' };
+    case 'experiment':
+      return { bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-400' };
+    case 'literature':
+      return { bg: 'bg-emerald-100', text: 'text-emerald-800', border: 'border-emerald-400' };
+    case 'dataset':
+      return { bg: 'bg-yellow-100', text: 'text-yellow-800', border: 'border-yellow-400' };
+    default:
+      return { bg: 'bg-gray-100', text: 'text-gray-800', border: 'border-gray-400' };
+  }
+}
 
 function ActionNodeComponent({ data }: NodeProps) {
   const { action, label, isHighlighted } = data as unknown as ActionNodeData;
-  const colors = actionTypeColors[action.actionType] || actionTypeColors.custom;
+  const colors = getActionTypeColors(action.actionType);
 
   return (
     <div

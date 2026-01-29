@@ -1,33 +1,16 @@
 import { useState } from 'react';
-import type { ActionSpace, ActionDefinition } from '../types';
+import type { ActionSpace, ActionDefinition, ActionType } from '../types';
+import { ACTION_TYPES, ACTION_TYPE_CATEGORIES, getActionTypeColor } from '../utils/actionTypes';
 
 interface ActionSpaceEditorProps {
   actionSpace: ActionSpace;
   onUpdate: (actionSpace: ActionSpace) => void;
 }
 
-const ACTION_TYPES = [
-  {
-    value: 'md_simulation',
-    label: 'MD Simulation',
-    defaultHints: [
-      'structure',           // DB reference + modifications (e.g., "MP:mp-149 + supercell(2x2x2)")
-      'temperature',         // Target temperature (K)
-      'simulation_time',     // Duration (ps/ns)
-      'ensemble',            // NVE/NVT/NPT
-      'force_field',         // ReaxFF/MLP/EAM/etc. or xc_functional for AIMD/DFT
-    ]
-  },
-  { value: 'experiment', label: 'Experiment', defaultHints: ['method', 'conditions', 'samples'] },
-  { value: 'literature', label: 'Literature Search', defaultHints: ['keywords', 'databases'] },
-  { value: 'dataset', label: 'Dataset Query', defaultHints: ['dataset_name', 'query_type'] },
-  { value: 'custom', label: 'Custom', defaultHints: [] },
-] as const;
-
 export function ActionSpaceEditor({ actionSpace, onUpdate }: ActionSpaceEditorProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
-  const [newType, setNewType] = useState<ActionDefinition['type']>('custom');
+  const [newType, setNewType] = useState<ActionType>('custom');
   const [newDescription, setNewDescription] = useState('');
 
   const handleAdd = () => {
@@ -78,8 +61,8 @@ export function ActionSpaceEditor({ actionSpace, onUpdate }: ActionSpaceEditorPr
           <div className="flex items-start justify-between">
             <div>
               <span className="text-sm font-medium text-gray-800">{action.name}</span>
-              <span className="ml-2 text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
-                {ACTION_TYPES.find(t => t.value === action.type)?.label}
+              <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${getActionTypeColor(action.type)}`}>
+                {ACTION_TYPES.find(t => t.value === action.type)?.label || action.type}
               </span>
             </div>
             <button
@@ -115,11 +98,15 @@ export function ActionSpaceEditor({ actionSpace, onUpdate }: ActionSpaceEditorPr
           />
           <select
             value={newType}
-            onChange={e => setNewType(e.target.value as ActionDefinition['type'])}
+            onChange={e => setNewType(e.target.value as ActionType)}
             className="w-full text-sm px-2 py-1 border border-gray-300 rounded"
           >
-            {ACTION_TYPES.map(t => (
-              <option key={t.value} value={t.value}>{t.label}</option>
+            {Object.entries(ACTION_TYPE_CATEGORIES).map(([category, types]) => (
+              <optgroup key={category} label={category}>
+                {types.map(t => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </optgroup>
             ))}
           </select>
           <input

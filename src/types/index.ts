@@ -104,10 +104,36 @@ export interface GraphBuildResult {
 // Action Space Types
 // ============================================
 
+// Action types including Shoshin Matlantis calculation types
+export type ActionType =
+  // Original Causeway types
+  | 'md_simulation'
+  | 'experiment'
+  | 'literature'
+  | 'dataset'
+  | 'custom'
+  // Shoshin Matlantis calculation types
+  | 'matlantis_md'              // MD simulation on Matlantis
+  | 'matlantis_optimization'    // Structure optimization
+  | 'matlantis_diffusivity'     // Diffusivity analysis
+  | 'matlantis_rdf'             // RDF analysis
+  | 'matlantis_thermal'         // Thermal conductivity
+  | 'matlantis_elastic'         // Elastic properties
+  | 'matlantis_neb'             // NEB reaction path
+  | 'matlantis_surface'         // Surface generation
+  | 'matlantis_molecule'        // Molecule generation
+  | 'matlantis_ionic'           // Ionic conductivity
+  | 'matlantis_phonon'          // Phonon DOS
+  | 'matlantis_viscosity'       // Viscosity
+  // Shoshin batch calculation types
+  | 'matlantis_batch_optimization'
+  | 'matlantis_batch_md'
+  | 'matlantis_batch_diffusivity';
+
 export interface ActionDefinition {
   id: string;
   name: string;
-  type: 'md_simulation' | 'experiment' | 'literature' | 'dataset' | 'custom';
+  type: ActionType;
   description: string;
   parameterHints?: string[];
 }

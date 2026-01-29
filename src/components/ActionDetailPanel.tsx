@@ -5,6 +5,8 @@ import {
   exportActionToMarkdown,
   downloadAsFile
 } from '../utils/actionExport';
+import { MatlantisExecutor } from './MatlantisExecutor';
+import { getActionTypeColor } from '../utils/actionTypes';
 
 interface ActionDetailPanelProps {
   action: ConsolidatedAction;
@@ -58,7 +60,7 @@ export function ActionDetailPanel({
       <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
         <div>
           <h2 className="font-semibold text-gray-900">{action.actionName}</h2>
-          <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-600 rounded">{action.actionType}</span>
+          <span className={`text-xs px-2 py-0.5 rounded ${getActionTypeColor(action.actionType)}`}>{action.actionType}</span>
         </div>
         <button
           onClick={onClose}
@@ -158,6 +160,9 @@ export function ActionDetailPanel({
             })}
           </div>
         </div>
+
+        {/* Matlantis Execution (for Matlantis action types) */}
+        <MatlantisExecutor action={action} />
       </div>
 
       {/* Footer Actions */}

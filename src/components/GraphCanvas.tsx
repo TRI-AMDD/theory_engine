@@ -409,7 +409,7 @@ function GraphCanvasInner({ graph, selectedNodeId, selectedNodeIds, consolidatio
   }, [nodes, edges, setNodes, setEdges, onNodePositionsChange]);
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full min-h-[400px]">
       <ReactFlow
         nodes={nodes}
         edges={edges}

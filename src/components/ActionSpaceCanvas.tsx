@@ -151,7 +151,7 @@ export function ActionSpaceCanvas({
   }, [selectedHypothesisId, selectedActionId, onHypothesisSelect, onActionSelect]);
 
   return (
-    <div className="w-full h-full" style={{ backgroundColor: '#1e1b4b' }}>
+    <div className="w-full h-full min-h-[400px]" style={{ backgroundColor: '#1e1b4b' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
