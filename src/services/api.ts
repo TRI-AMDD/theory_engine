@@ -1767,7 +1767,53 @@ AVAILABLE VALIDATION ACTIONS:
 ${input.actionSpace.actions.length > 0 ? input.actionSpace.actions.map(a =>
   `- ID: "${a.id}" | ${a.name} (${a.type}): ${a.description}\n  Parameters: ${a.parameterHints?.join(', ') || 'None'}`
 ).join('\n') : 'No actions defined - skip actionHooks in response'}
-${input.actionSpace.actions.some(a => a.type === 'md_simulation') ? `
+
+ACTION CHAINING GUIDANCE:
+Actions can and should be CHAINED together in workflows where one action's output feeds into another.
+When proposing actionHooks, consider whether a sequence of actions would be more appropriate than a single action.
+
+Common action chains:
+- Structure retrieval/generation -> Structure relaxation -> MD simulation -> Analysis
+- Crystal database query -> Create supercell/defect -> DFT relaxation -> Property calculation
+- Initial structure -> Geometry optimization -> NEB calculation (for migration barriers)
+- Composition screening -> Voltage profile prediction -> Capacity analysis
+
+For each hypothesis, propose the FULL sequence of actions needed, not just the final simulation.
+Order your actionHooks array so earlier actions produce inputs for later actions.
+In each action's "instructions" field, reference which prior action's output it uses.
+${input.actionSpace.actions.some(a => a.type === 'matlantis_md') ? `
+MATLANTIS WORKFLOW GUIDANCE:
+For Matlantis-based hypotheses, always consider this workflow sequence:
+1. Structure source (database query or file input) - specify the starting structure
+2. Structure Relaxation - optimize geometry before dynamics
+3. MD Run - perform the actual molecular dynamics simulation
+4. (Optional) NEB Calculation - if studying diffusion/migration barriers
+
+Even if testing a single hypothesis, include all prerequisite steps in your actionHooks.
+` : ''}${input.actionSpace.actions.some(a => a.type === 'xtb_calculation') ? `
+XTB WORKFLOW GUIDANCE:
+For xTB-based hypotheses, consider these workflow patterns:
+- Single molecule: Geometry Optimization -> Single Point (for accurate energy)
+- Reaction pathway: Geometry Opt (reactant) -> Geometry Opt (product) -> Coordinate Scan or NEB
+- Dynamics study: Geometry Optimization -> Molecular Dynamics
+- Conformer search: Multiple Geometry Optimizations with different starting points
+` : ''}${input.actionSpace.actions.some(a => a.type === 'crystal_structure_query') ? `
+CRYSTAL DATABASE WORKFLOW GUIDANCE:
+When working with crystal structures, chain these actions:
+1. Crystal Structure Query - find the base structure from database
+2. Structure modification (Supercell, Point Defect, Surface Slab, or Strain) - prepare for simulation
+3. Downstream simulation (MD, DFT relaxation, etc.)
+
+Always specify database (mp, icsd, oqmd, aflow, cod, gnome, alexandria) and query criteria.
+` : ''}${input.actionSpace.actions.some(a => a.type === 'drxnet_prediction') ? `
+DRXNET WORKFLOW GUIDANCE:
+For battery material predictions:
+1. Start with composition specification or Capacity Screening for discovery
+2. Follow with Voltage Profile for detailed electrochemical behavior
+3. Vary current_density_rate (5-20000 mA/g) to study rate capability
+4. Use cycle_number (1-891) to predict degradation behavior
+` : ''}
+${input.actionSpace.actions.some(a => a.type === 'md_simulation' || a.type === 'matlantis_md' || a.type === 'xtb_calculation') ? `
 COMPUTATIONAL CHEMISTRY PARAMETER GUIDANCE:
 When specifying parameters for MD, AIMD, or DFT actions, use these standardized parameter names and values:
 ${getSimulationParameterContext()}
